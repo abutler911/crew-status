@@ -1,0 +1,980 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import * as store from './lib/store.js';
+
+// ---------------------------------------------------------------------------
+// Change these two codes to whatever you like.
+// In the artifact preview the check happens in the browser (fine, since this
+// data is public). When you deploy to your subdomain, these move to server
+// side env vars so the gate is real. See the notes in chat.
+// ---------------------------------------------------------------------------
+const VIEW_CODE = 'homebase'; // give this one to Beth
+const ADMIN_CODE = 'leftseat'; // keep this one to yourself
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.cs-root {
+  --ink: #0e0d11;
+  --surface: #16141a;
+  --surface-2: #1d1a21;
+  --line: rgba(232,228,221,0.09);
+  --text: #e9e5de;
+  --muted: #8b857d;
+  --faint: #5f5a56;
+  --crimson: #cf3a4f;
+  --crimson-dim: rgba(207,58,79,0.14);
+  min-height: 100vh;
+  background: var(--ink);
+  color: var(--text);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px 64px;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.cs-shell { width: 100%; max-width: 560px; }
+
+.cs-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  margin-bottom: 18px;
+}
+
+/* ---- gate ---- */
+.cs-gate { margin-top: 8vh; }
+.cs-gate h1 {
+  font-size: 46px;
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+.cs-gate p { color: var(--muted); font-size: 19px; margin-bottom: 28px; }
+.cs-field { display: flex; gap: 10px; }
+.cs-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  letter-spacing: 0.15em;
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+.cs-input:focus { border-color: var(--crimson); }
+.cs-input::placeholder { color: var(--faint); letter-spacing: 0.15em; }
+
+.cs-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: var(--crimson);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0 20px;
+  cursor: pointer;
+  transition: filter 0.18s ease, transform 0.05s ease;
+}
+.cs-btn:hover { filter: brightness(1.12); }
+.cs-btn:active { transform: translateY(1px); }
+.cs-btn.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.cs-btn.ghost:hover { color: var(--text); border-color: var(--muted); filter: none; }
+.cs-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cs-err {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--crimson);
+  margin-top: 14px;
+  letter-spacing: 0.04em;
+}
+
+/* ---- status header ---- */
+.cs-status { margin-bottom: 4px; }
+.cs-status .word {
+  font-size: 60px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+.cs-status .sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-top: 14px;
+}
+.cs-rule { height: 1px; background: var(--line); margin: 30px 0; }
+
+/* ---- legs ---- */
+.cs-leg {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 20px 22px;
+  margin-bottom: 14px;
+  position: relative;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: rise 0.5s cubic-bezier(0.2,0.7,0.2,1) forwards;
+}
+@keyframes rise { to { opacity: 1; transform: none; } }
+.cs-leg.active {
+  border-color: rgba(207,58,79,0.5);
+  background: linear-gradient(var(--surface), var(--surface)) padding-box,
+              var(--surface);
+  box-shadow: inset 3px 0 0 var(--crimson);
+}
+.cs-leg.done { opacity: 0.45; }
+.cs-leg.done.flown { animation: none; opacity: 0.45; transform: none; }
+
+.cs-legtop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 16px;
+}
+.cs-flight { color: var(--text); }
+.cs-tag {
+  color: var(--crimson);
+  letter-spacing: 0.18em;
+}
+
+.cs-route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; }
+.cs-port { }
+.cs-port.to { text-align: right; }
+.cs-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.cs-city {
+  font-size: 18px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+.cs-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+.cs-arrow { color: var(--faint); display: flex; align-items: center; justify-content: center; }
+.cs-arrow svg { display: block; }
+.cs-day {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--crimson);
+  letter-spacing: 0.1em;
+  margin-top: 6px;
+}
+
+.cs-foot {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.cs-link { color: var(--faint); cursor: pointer; text-decoration: none; }
+.cs-link:hover { color: var(--muted); }
+
+/* ---- admin ---- */
+.cs-admin h2 { font-size: 34px; font-weight: 500; margin-bottom: 4px; }
+.cs-admin .hint { color: var(--muted); font-size: 17px; margin-bottom: 26px; }
+.cs-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cs-grid.b { grid-template-columns: 1fr 1fr; }
+.cs-lab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 6px 2px;
+  display: block;
+}
+.cs-in {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  padding: 11px 12px;
+  outline: none;
+}
+.cs-in:focus { border-color: var(--crimson); }
+.cs-in::placeholder { color: var(--faint); }
+
+.cs-pending {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  background: var(--surface);
+}
+.cs-x { color: var(--faint); cursor: pointer; font-size: 16px; padding-left: 12px; }
+.cs-x:hover { color: var(--crimson); }
+
+.cs-actions { display: flex; gap: 10px; margin-top: 22px; }
+.cs-actions .cs-btn { padding: 13px 22px; }
+
+.cs-saved {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #7bb88f;
+  letter-spacing: 0.05em;
+  margin-top: 16px;
+}
+
+.cs-area {
+  width: 100%;
+  min-height: 160px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 14px 16px;
+  outline: none;
+  resize: vertical;
+}
+.cs-area:focus { border-color: var(--crimson); }
+.cs-area::placeholder { color: var(--faint); }
+
+.cs-spin {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border: 1.5px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 8px;
+  vertical-align: -1px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.cs-or {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  text-align: center;
+  margin: 20px 0 4px;
+}
+.cs-manual-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cs-manual-link:hover { color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-leg { animation: none !important; opacity: 1; transform: none; }
+}
+@media (max-width: 480px) {
+  .cs-status .word { font-size: 46px; }
+  .cs-grid, .cs-grid.b { grid-template-columns: 1fr 1fr; }
+}
+`;
+
+// ---- helpers ----------------------------------------------------------------
+
+function legDates(leg) {
+  // returns {dep, arr} Date objects; arr rolls to next day if earlier than dep
+  const dep = new Date(`${leg.date}T${leg.depart}:00`);
+  let arr = new Date(`${leg.date}T${leg.arrive}:00`);
+  if (arr < dep) arr = new Date(arr.getTime() + 24 * 3600 * 1000);
+  return { dep, arr, nextDay: arr.getDate() !== dep.getDate() };
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+// The instant a trip should delete itself: start of the second calendar day
+// after the last leg lands. So it stays visible through the day after the trip
+// ends, then clears.
+function removeAt(trip) {
+  if (!trip || !trip.legs || trip.legs.length === 0) return null;
+  const last = trip.legs.reduce(
+    (m, l) => Math.max(m, legDates(l).arr.getTime()),
+    0
+  );
+  const d = new Date(last);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 2);
+  return d;
+}
+
+function tripStatus(trip, now) {
+  if (!trip || !trip.legs || trip.legs.length === 0) return { state: 'home' };
+  const sorted = [...trip.legs].sort(
+    (a, b) => legDates(a).dep - legDates(b).dep
+  );
+  const first = legDates(sorted[0]).dep;
+  const last = legDates(sorted[sorted.length - 1]).arr;
+  const gone = removeAt(trip);
+  if (now >= gone) return { state: 'home', expired: true, sorted, first, last };
+  if (now < first) return { state: 'upcoming', sorted, first, last };
+  if (now > last) return { state: 'complete', sorted, first, last }; // landed, day-after grace
+  return { state: 'active', sorted, first, last };
+}
+
+// Reads a pasted trip sheet of any format into structured legs via Claude.
+async function parseTripSheet(raw) {
+  // Sends the raw paste to our serverless function, which calls Claude with a
+  // secret API key and returns clean legs. The key never touches the browser.
+  const res = await fetch('/api/parse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw }),
+  });
+  if (!res.ok) throw new Error('parse request failed');
+  const data = await res.json();
+  const legs = data.legs;
+  if (!Array.isArray(legs)) throw new Error('bad shape');
+  return legs.map((l) => ({
+    date: l.date || '',
+    flight: l.flight || '',
+    from: (l.from || '').toUpperCase(),
+    to: (l.to || '').toUpperCase(),
+    fromCity: l.fromCity || '',
+    toCity: l.toCity || '',
+    depart: l.depart || '',
+    arrive: l.arrive || '',
+  }));
+}
+
+// Builds the textarea example using dates a few days out, so a test publish
+// lands on the board instead of immediately auto-hiding as past.
+function examplePlaceholder() {
+  const MON = [
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+  ];
+  const d = (offset) => {
+    const x = new Date();
+    x.setDate(x.getDate() + offset);
+    return String(x.getDate()).padStart(2, '0') + MON[x.getMonth()];
+  };
+  return (
+    "Paste here. However it's formatted is fine. For example:\n\n" +
+    `DL2014  ${d(2)}  SLC-LAX  0915-1042\n` +
+    `DL1885  ${d(2)}  LAX-SEA  1210-1455\n` +
+    `DL 944  ${d(3)}  SEA-SLC  0730-1018`
+  );
+}
+
+// ---- app-------------------------------------------------------------------
+
+export default function App() {
+  const [screen, setScreen] = useState('loading'); // loading | gate | viewer | admin
+  const [trip, setTrip] = useState(null);
+  const [now, setNow] = useState(new Date());
+
+  // tick so status updates live
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Deletes the stored trip if it's past its remove-at instant. Returns the
+  // trip to keep, or null if it was expired and cleared.
+  const expireIfDue = async (t) => {
+    const gone = removeAt(t);
+    if (t && gone && new Date() >= gone) {
+      try {
+        await store.clearTrip();
+      } catch {}
+      return null;
+    }
+    return t;
+  };
+
+  const loadTrip = async () => {
+    try {
+      const t = await store.getTrip();
+      setTrip(await expireIfDue(t));
+    } catch {
+      setTrip(null);
+    }
+  };
+
+  // While the app is open, clear the trip the moment it expires.
+  useEffect(() => {
+    if (!trip) return;
+    const gone = removeAt(trip);
+    if (gone && now >= gone) {
+      (async () => {
+        try {
+          await store.clearTrip();
+        } catch {}
+        setTrip(null);
+      })();
+    }
+  }, [now, trip]);
+
+  useEffect(() => {
+    (async () => {
+      await loadTrip();
+      setScreen('gate');
+    })();
+  }, []);
+
+  if (screen === 'loading') {
+    return (
+      <div className='cs-root'>
+        <style>{css}</style>
+        <div
+          className='cs-shell mono'
+          style={{
+            marginTop: '20vh',
+            color: '#5f5a56',
+            letterSpacing: '0.2em',
+            fontSize: 12,
+          }}
+        >
+          LOADING
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className='cs-root'>
+      <style>{css}</style>
+      <div className='cs-shell'>
+        {screen === 'gate' && (
+          <Gate
+            resolve={(v) => {
+              const n = v.replace(/\s+/g, '').toLowerCase();
+              if (n === VIEW_CODE.toLowerCase()) {
+                loadTrip().then(() => setScreen('viewer'));
+                return true;
+              }
+              if (n === ADMIN_CODE.toLowerCase()) {
+                setScreen('admin');
+                return true;
+              }
+              return false;
+            }}
+          />
+        )}
+
+        {screen === 'viewer' && (
+          <Viewer trip={trip} now={now} onLock={() => setScreen('gate')} />
+        )}
+
+        {screen === 'admin' && (
+          <Admin
+            trip={trip}
+            onPublish={async (t) => {
+              setTrip(t);
+              await loadTrip();
+            }}
+            onExit={() => setScreen('gate')}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Gate({ resolve }) {
+  const [val, setVal] = useState('');
+  const [err, setErr] = useState(false);
+  const submit = () => {
+    if (!resolve(val)) setErr(true);
+  };
+  return (
+    <div className='cs-gate'>
+      <div className='cs-eyebrow'>SLC · A220</div>
+      <h1>Crew status</h1>
+      <p>Enter your access code.</p>
+      <div className='cs-field'>
+        <input
+          className='cs-input'
+          type='password'
+          autoCapitalize='none'
+          autoCorrect='off'
+          autoComplete='off'
+          spellCheck={false}
+          placeholder='ACCESS CODE'
+          value={val}
+          onChange={(e) => {
+            setVal(e.target.value);
+            setErr(false);
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          autoFocus
+        />
+        <button className='cs-btn' onClick={submit}>
+          Enter
+        </button>
+      </div>
+      {err && <div className='cs-err'>Code not recognized. Try again.</div>}
+    </div>
+  );
+}
+
+function Viewer({ trip, now, onLock }) {
+  const s = useMemo(() => tripStatus(trip, now), [trip, now]);
+
+  if (s.state === 'home') {
+    return (
+      <div>
+        <div className='cs-eyebrow'>CREW STATUS</div>
+        <div className='cs-status'>
+          <div className='word'>Home</div>
+          <div className='sub'>
+            No active trip on the board. Updated when the next one is published.
+          </div>
+        </div>
+        <div className='cs-rule' />
+        <div className='cs-foot'>
+          <span>SLC · ANDY</span>
+          <span className='cs-link' onClick={onLock}>
+            Lock
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const word =
+    s.state === 'upcoming'
+      ? 'Trip ahead'
+      : s.state === 'complete'
+        ? 'Back home'
+        : 'Flying';
+  const range =
+    fmtDate(s.first) === fmtDate(s.last)
+      ? fmtDate(s.first)
+      : `${fmtDate(s.first)} — ${fmtDate(s.last)}`;
+  const sub =
+    s.state === 'upcoming'
+      ? `Departs ${fmtDate(s.first)} · ${s.sorted.length} leg${s.sorted.length > 1 ? 's' : ''}`
+      : s.state === 'complete'
+        ? `Landed ${fmtDate(s.last)} · clears tomorrow`
+        : `${range.replace(' — ', ' to ')} · ${s.sorted.length} leg${s.sorted.length > 1 ? 's' : ''}`;
+
+  return (
+    <div>
+      <div className='cs-eyebrow'>CREW STATUS</div>
+      <div className='cs-status'>
+        <div className='word'>{word}</div>
+        <div className='sub'>{sub}</div>
+      </div>
+      <div className='cs-rule' />
+
+      {s.sorted.map((leg, i) => {
+        const { dep, arr, nextDay } = legDates(leg);
+        const isActive = s.state === 'active' && now >= dep && now <= arr;
+        const isDone = now > arr;
+        return (
+          <div
+            key={i}
+            className={`cs-leg ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}
+            style={{ animationDelay: `${i * 0.07}s` }}
+          >
+            <div className='cs-legtop'>
+              <span className='cs-flight'>{leg.flight}</span>
+              <span>{fmtDate(dep)}</span>
+              <span className='cs-tag'>
+                {isActive ? 'IN AIR' : isDone ? 'FLOWN' : 'SCHEDULED'}
+              </span>
+            </div>
+            <div className='cs-route'>
+              <div className='cs-port'>
+                <div className='cs-code'>{leg.from}</div>
+                {leg.fromCity ? (
+                  <div className='cs-city'>{leg.fromCity}</div>
+                ) : null}
+                <div className='cs-time'>{leg.depart}</div>
+              </div>
+              <div className='cs-arrow'>
+                <svg width='34' height='14' viewBox='0 0 34 14' fill='none'>
+                  <path d='M0 7h28' stroke='currentColor' strokeWidth='1' />
+                  <path
+                    d='M24 2l6 5-6 5'
+                    stroke='currentColor'
+                    strokeWidth='1'
+                    fill='none'
+                  />
+                </svg>
+              </div>
+              <div className='cs-port to'>
+                <div className='cs-code'>{leg.to}</div>
+                {leg.toCity ? (
+                  <div className='cs-city'>{leg.toCity}</div>
+                ) : null}
+                <div className='cs-time'>
+                  {leg.arrive}
+                  {nextDay ? ' +1' : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className='cs-foot'>
+        <span>SLC · ANDY</span>
+        <span className='cs-link' onClick={onLock}>
+          Lock
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Admin({ trip, onPublish, onExit }) {
+  const [raw, setRaw] = useState('');
+  const [legs, setLegs] = useState(trip?.legs ? [...trip.legs] : []);
+  const [parsing, setParsing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const [showManual, setShowManual] = useState(false);
+  const [draft, setDraft] = useState({
+    date: '',
+    flight: '',
+    from: '',
+    fromCity: '',
+    to: '',
+    toCity: '',
+    depart: '',
+    arrive: '',
+  });
+
+  const up = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+
+  const format = async () => {
+    if (!raw.trim()) return;
+    setParsing(true);
+    setNote('');
+    try {
+      const result = await parseTripSheet(raw);
+      if (result.length === 0) {
+        setNote(
+          "Couldn't find any legs in that. Check the paste, or add one by hand below."
+        );
+      } else {
+        setLegs(result);
+        setNote(
+          `Read ${result.length} leg${result.length > 1 ? 's' : ''}. Check it looks right, then publish.`
+        );
+      }
+    } catch {
+      setNote("That didn't parse. Try pasting again, or add legs by hand.");
+    }
+    setParsing(false);
+  };
+
+  const addLeg = () => {
+    if (
+      !draft.date ||
+      !draft.flight ||
+      !draft.from ||
+      !draft.to ||
+      !draft.depart ||
+      !draft.arrive
+    )
+      return;
+    setLegs((l) => [
+      ...l,
+      { ...draft, from: draft.from.toUpperCase(), to: draft.to.toUpperCase() },
+    ]);
+    setDraft({
+      date: draft.date,
+      flight: '',
+      from: '',
+      fromCity: '',
+      to: '',
+      toCity: '',
+      depart: '',
+      arrive: '',
+    });
+  };
+  const removeLeg = (i) => setLegs((l) => l.filter((_, idx) => idx !== i));
+
+  const publish = async () => {
+    setBusy(true);
+    const t = { legs, updatedAt: new Date().toISOString() };
+    try {
+      await store.saveTrip(t);
+      await onPublish(t);
+      const s = tripStatus(t, new Date());
+      if (s.state === 'home') {
+        setNote(
+          'Saved, but this trip is already past its display window, so the board shows Home. Publish a current or upcoming trip to see it.'
+        );
+      } else if (s.state === 'upcoming') {
+        setNote('Published. Beth sees it as an upcoming trip.');
+      } else if (s.state === 'complete') {
+        setNote(
+          'Published. Shows as just landed; it clears on its own after tomorrow.'
+        );
+      } else {
+        setNote('Published. Beth sees this now.');
+      }
+    } catch (e) {
+      setNote('Could not save: ' + (e && e.message ? e.message : String(e)));
+    }
+    setBusy(false);
+  };
+
+  const clearBoard = async () => {
+    setBusy(true);
+    const t = { legs: [], updatedAt: new Date().toISOString() };
+    try {
+      await store.saveTrip(t);
+      await onPublish(t);
+      setLegs([]);
+      setRaw('');
+      setNote('Board cleared. Shows as Home.');
+    } catch {
+      setNote('Could not save. Try again.');
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className='cs-admin'>
+      <div className='cs-eyebrow'>FLIGHT DECK</div>
+      <h2>Drop in a trip</h2>
+      <p className='hint'>
+        Paste your trip sheet. However it's formatted is fine.
+      </p>
+
+      <textarea
+        className='cs-area'
+        placeholder={examplePlaceholder()}
+        value={raw}
+        onChange={(e) => setRaw(e.target.value)}
+      />
+      <div className='cs-actions' style={{ marginTop: 12 }}>
+        <button
+          className='cs-btn'
+          onClick={format}
+          disabled={parsing || !raw.trim()}
+        >
+          {parsing ? (
+            <>
+              <span className='cs-spin' />
+              Reading
+            </>
+          ) : (
+            'Format trip'
+          )}
+        </button>
+      </div>
+
+      {legs.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <span className='cs-lab'>Preview · what Beth will see</span>
+          {legs.map((leg, i) => (
+            <div className='cs-leg flown done' key={i} style={{ opacity: 1 }}>
+              <div className='cs-legtop'>
+                <span className='cs-flight'>{leg.flight}</span>
+                <span>{leg.date}</span>
+                <span
+                  className='cs-x'
+                  onClick={() => removeLeg(i)}
+                  style={{ padding: 0 }}
+                >
+                  ×
+                </span>
+              </div>
+              <div className='cs-route'>
+                <div className='cs-port'>
+                  <div className='cs-code'>{leg.from}</div>
+                  {leg.fromCity ? (
+                    <div className='cs-city'>{leg.fromCity}</div>
+                  ) : null}
+                  <div className='cs-time'>{leg.depart}</div>
+                </div>
+                <div className='cs-arrow'>
+                  <svg width='34' height='14' viewBox='0 0 34 14' fill='none'>
+                    <path d='M0 7h28' stroke='currentColor' strokeWidth='1' />
+                    <path
+                      d='M24 2l6 5-6 5'
+                      stroke='currentColor'
+                      strokeWidth='1'
+                      fill='none'
+                    />
+                  </svg>
+                </div>
+                <div className='cs-port to'>
+                  <div className='cs-code'>{leg.to}</div>
+                  {leg.toCity ? (
+                    <div className='cs-city'>{leg.toCity}</div>
+                  ) : null}
+                  <div className='cs-time'>{leg.arrive}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!showManual ? (
+        <div className='cs-or'>
+          <span className='cs-manual-link' onClick={() => setShowManual(true)}>
+            add a leg by hand
+          </span>
+        </div>
+      ) : (
+        <div style={{ marginTop: 22 }}>
+          <span className='cs-lab'>Date · flight</span>
+          <div className='cs-grid b'>
+            <input
+              className='cs-in'
+              type='date'
+              value={draft.date}
+              onChange={(e) => up('date', e.target.value)}
+            />
+            <input
+              className='cs-in'
+              placeholder='DL 1234'
+              value={draft.flight}
+              onChange={(e) => up('flight', e.target.value)}
+            />
+          </div>
+          <span className='cs-lab'>From · city · depart</span>
+          <div className='cs-grid'>
+            <input
+              className='cs-in'
+              placeholder='SLC'
+              maxLength={4}
+              value={draft.from}
+              onChange={(e) => up('from', e.target.value.toUpperCase())}
+            />
+            <input
+              className='cs-in'
+              placeholder='Salt Lake'
+              value={draft.fromCity}
+              onChange={(e) => up('fromCity', e.target.value)}
+            />
+            <input
+              className='cs-in'
+              type='time'
+              value={draft.depart}
+              onChange={(e) => up('depart', e.target.value)}
+            />
+          </div>
+          <span className='cs-lab'>To · city · arrive</span>
+          <div className='cs-grid'>
+            <input
+              className='cs-in'
+              placeholder='LAX'
+              maxLength={4}
+              value={draft.to}
+              onChange={(e) => up('to', e.target.value.toUpperCase())}
+            />
+            <input
+              className='cs-in'
+              placeholder='Los Angeles'
+              value={draft.toCity}
+              onChange={(e) => up('toCity', e.target.value)}
+            />
+            <input
+              className='cs-in'
+              type='time'
+              value={draft.arrive}
+              onChange={(e) => up('arrive', e.target.value)}
+            />
+          </div>
+          <div className='cs-actions' style={{ marginTop: 12 }}>
+            <button className='cs-btn ghost' onClick={addLeg}>
+              Add leg
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className='cs-actions'>
+        <button
+          className='cs-btn'
+          onClick={publish}
+          disabled={busy || legs.length === 0}
+        >
+          Publish trip
+        </button>
+        <button className='cs-btn ghost' onClick={clearBoard} disabled={busy}>
+          Clear board
+        </button>
+      </div>
+
+      {note && <div className='cs-saved'>{note}</div>}
+
+      <div className='cs-foot'>
+        <span />
+        <span className='cs-link' onClick={onExit}>
+          Exit
+        </span>
+      </div>
+    </div>
+  );
+}
