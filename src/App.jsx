@@ -205,11 +205,15 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 }
 .cs-time {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 19px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text);
   margin-top: 10px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .cs-arrow { color: var(--faint); display: flex; align-items: center; justify-content: center; }
 .cs-arrow svg { display: block; }
