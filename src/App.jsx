@@ -400,11 +400,19 @@ function fmtDate(d) {
   });
 }
 
-// Weekday and date for the big group header, e.g. { dow: "Saturday", md: "June 21" }.
+// MM/DD/YYYY from a Date or a "YYYY-MM-DD" string.
+function fmtMDY(input) {
+  const d = input instanceof Date ? input : new Date(input + "T00:00:00");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
+// Weekday and date for the big group header, e.g. { dow: "Saturday", md: "06/21/2026" }.
 function fmtDayHead(d) {
   return {
     dow: d.toLocaleDateString(undefined, { weekday: "long" }),
-    md: d.toLocaleDateString(undefined, { month: "long", day: "numeric" }),
+    md: fmtMDY(d),
   };
 }
 
@@ -1036,7 +1044,7 @@ function Admin({ trip, onPublish, onExit }) {
             <div className="cs-leg flown done" key={i} style={{ opacity: 1 }}>
               <div className="cs-legtop">
                 <span className="cs-flight">{leg.flight}</span>
-                <span>{leg.date}</span>
+                <span>{fmtMDY(leg.date)}</span>
                 <span
                   className="cs-x"
                   onClick={() => removeLeg(i)}
