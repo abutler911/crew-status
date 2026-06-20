@@ -227,6 +227,17 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   text-overflow: ellipsis;
   max-width: 100%;
 }
+.cs-tzhint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 3px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 .cs-arrow { color: var(--faint); display: flex; align-items: center; justify-content: center; }
 .cs-arrow svg { display: block; }
 .cs-day {
@@ -464,6 +475,86 @@ function fmtTime(hhmm) {
   return `${h}:${m} ${ap}`;
 }
 
+const UTAH_TZ = "America/Denver";
+
+// IATA airport code -> IANA timezone, for the airports Andy's trips actually
+// touch. Used to show departure times in Utah time alongside local time.
+const AIRPORT_TZ = {
+  // Mountain
+  SLC: UTAH_TZ, DEN: UTAH_TZ, ABQ: UTAH_TZ, COS: UTAH_TZ, BOI: UTAH_TZ,
+  GJT: UTAH_TZ, BZN: UTAH_TZ, JAC: UTAH_TZ,
+  PHX: "America/Phoenix", TUS: "America/Phoenix",
+  // Pacific
+  LAX: "America/Los_Angeles", SFO: "America/Los_Angeles", SAN: "America/Los_Angeles",
+  SJC: "America/Los_Angeles", OAK: "America/Los_Angeles", SMF: "America/Los_Angeles",
+  SNA: "America/Los_Angeles", BUR: "America/Los_Angeles", ONT: "America/Los_Angeles",
+  PDX: "America/Los_Angeles", SEA: "America/Los_Angeles", GEG: "America/Los_Angeles",
+  RNO: "America/Los_Angeles", LAS: "America/Los_Angeles", FAT: "America/Los_Angeles",
+  // Alaska / Hawaii
+  ANC: "America/Anchorage", FAI: "America/Anchorage", JNU: "America/Anchorage",
+  HNL: "Pacific/Honolulu", OGG: "Pacific/Honolulu", KOA: "Pacific/Honolulu",
+  // Central
+  ORD: "America/Chicago", MDW: "America/Chicago", DFW: "America/Chicago",
+  IAH: "America/Chicago", HOU: "America/Chicago", MSY: "America/Chicago",
+  MSP: "America/Chicago", STL: "America/Chicago", MCI: "America/Chicago",
+  OMA: "America/Chicago", OKC: "America/Chicago", TUL: "America/Chicago",
+  MEM: "America/Chicago", BNA: "America/Chicago", AUS: "America/Chicago",
+  SAT: "America/Chicago", ICT: "America/Chicago", DSM: "America/Chicago",
+  MKE: "America/Chicago", FAR: "America/Chicago", LIT: "America/Chicago",
+  // Eastern
+  ATL: "America/New_York", BOS: "America/New_York", JFK: "America/New_York",
+  LGA: "America/New_York", EWR: "America/New_York", DCA: "America/New_York",
+  IAD: "America/New_York", BWI: "America/New_York", PHL: "America/New_York",
+  CLT: "America/New_York", RDU: "America/New_York", MCO: "America/New_York",
+  MIA: "America/New_York", FLL: "America/New_York", TPA: "America/New_York",
+  PBI: "America/New_York", JAX: "America/New_York", RSW: "America/New_York",
+  PIT: "America/New_York", CLE: "America/New_York", CMH: "America/New_York",
+  CVG: "America/New_York", IND: "America/New_York", DTW: "America/New_York",
+  BUF: "America/New_York", ROC: "America/New_York", SYR: "America/New_York",
+  BDL: "America/New_York", PVD: "America/New_York", ALB: "America/New_York",
+  ORF: "America/New_York", RIC: "America/New_York", SAV: "America/New_York",
+  CHS: "America/New_York", GSP: "America/New_York", GSO: "America/New_York",
+  // International (common destinations)
+  YYZ: "America/Toronto", YVR: "America/Vancouver", YUL: "America/Toronto",
+  CUN: "America/Cancun", MEX: "America/Mexico_City",
+  LHR: "Europe/London", CDG: "Europe/Paris", AMS: "Europe/Amsterdam",
+  FRA: "Europe/Berlin", FCO: "Europe/Rome", MAD: "Europe/Madrid",
+  NRT: "Asia/Tokyo", HND: "Asia/Tokyo", ICN: "Asia/Seoul", PVG: "Asia/Shanghai",
+};
+
+// Converts a "YYYY-MM-DD" + "HH:MM" wall-clock time in `fromTz` to the
+// equivalent wall-clock time in `toTz`. Returns null if the input or the
+// resulting day shift can't be computed.
+function convertZonedTime(dateStr, hhmm, fromTz, toTz) {
+  if (!dateStr || !hhmm || !fromTz) return null;
+  // Treat the wall time as if it were UTC, then measure how far `fromTz`
+  // sits from UTC at that instant and shift back to find the real instant.
+  const asIfUtc = new Date(`${dateStr}T${hhmm}:00Z`);
+  const inTz = new Date(asIfUtc.toLocaleString("en-US", { timeZone: fromTz }));
+  const inUtc = new Date(asIfUtc.toLocaleString("en-US", { timeZone: "UTC" }));
+  const instant = new Date(asIfUtc.getTime() - (inTz.getTime() - inUtc.getTime()));
+
+  const time = instant.toLocaleTimeString("en-US", {
+    timeZone: toTz,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const origDay = dateStr;
+  const newDay = instant.toLocaleDateString("en-CA", { timeZone: toTz });
+  let dayShift = 0;
+  if (newDay > origDay) dayShift = 1;
+  else if (newDay < origDay) dayShift = -1;
+  return { time, dayShift };
+}
+
+// Departure time of a leg, converted to Utah time, or null if the same zone
+// (nothing useful to show) or the airport isn't in our table.
+function utahDepartTime(leg) {
+  const fromTz = AIRPORT_TZ[leg.from];
+  if (!fromTz || fromTz === UTAH_TZ) return null;
+  return convertZonedTime(leg.date, leg.depart, fromTz, UTAH_TZ);
+}
+
 // Returns "Today" / "Tomorrow" / "Yesterday" for a YYYY-MM-DD date, else null.
 function dayLabel(dateStr, now) {
   if (!dateStr) return null;
@@ -475,6 +566,22 @@ function dayLabel(dateStr, now) {
   if (diff === 1) return "Tomorrow";
   if (diff === -1) return "Yesterday";
   return null;
+}
+
+// The airport Andy actually lives at. Landing anywhere else doesn't count
+// as "back home," no matter how much time has passed since.
+const HOME_AIRPORT = "SLC";
+
+// Milliseconds -> "1 hour 15 minutes" / "40 minutes" / "2 hours", for the
+// "next flight in ..." countdown.
+function humanizeDuration(ms) {
+  const totalMin = Math.max(0, Math.round(ms / 60000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0 && m === 0) return "a few minutes";
+  if (h === 0) return `${m} minute${m === 1 ? "" : "s"}`;
+  if (m === 0) return `${h} hour${h === 1 ? "" : "s"}`;
+  return `${h} hour${h === 1 ? "" : "s"} ${m} minute${m === 1 ? "" : "s"}`;
 }
 
 // A casual day word for sentences: "today" / "tomorrow" / "Saturday".
@@ -506,10 +613,6 @@ function liveSummary(s, now) {
     }
   }
 
-  if (s.state === "complete") {
-    return { word: "Back home", line: "Andy is back home now." };
-  }
-
   const upcoming = sorted.filter((l) => legDates(l).dep > now);
   const past = sorted.filter((l) => legDates(l).arr <= now);
   const next = upcoming[0];
@@ -521,11 +624,34 @@ function liveSummary(s, now) {
     };
   }
 
-  // On the ground between legs.
-  const place = past[past.length - 1].toCity || past[past.length - 1].to;
+  const lastLanded = past[past.length - 1];
+  const place = lastLanded.toCity || lastLanded.to;
+
+  // Landed at home with nothing else on the books: the trip is actually over.
+  if (!next && lastLanded.to === HOME_AIRPORT) {
+    return { word: "Back home", line: "Andy is back home now." };
+  }
+
+  // No more legs in hand yet. He's not home, so it's an overnight, not "back home."
+  if (!next) {
+    return {
+      word: "Overnight",
+      line: `Andy is in ${place} on the overnight.`,
+    };
+  }
+
+  // Flying again later today: give a countdown instead of a day label.
+  if (dayLabel(next.date, now) === "Today") {
+    return {
+      word: "On the ground",
+      line: `Andy is in ${place} right now. Next flight in ${humanizeDuration(legDates(next).dep - now)}.`,
+    };
+  }
+
+  // Last leg of the day is down; the next one isn't until a later day.
   return {
-    word: "On the ground",
-    line: `Andy is in ${place} right now. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
+    word: "Overnight",
+    line: `Andy is in ${place} on the overnight. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
   };
 }
 
@@ -950,6 +1076,17 @@ function Viewer({ trip, now, onLock }) {
                           <div className="cs-city">{leg.fromCity}</div>
                         ) : null}
                         <div className="cs-time">{fmtTime(leg.depart)}</div>
+                        {(() => {
+                          const utah = utahDepartTime(leg);
+                          if (!utah) return null;
+                          return (
+                            <div className="cs-tzhint">
+                              {utah.time} MT
+                              {utah.dayShift > 0 ? " (+1 day)" : ""}
+                              {utah.dayShift < 0 ? " (-1 day)" : ""}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="cs-arrow">
                         <svg
