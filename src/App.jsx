@@ -568,6 +568,22 @@ function dayLabel(dateStr, now) {
   return null;
 }
 
+// The airport Andy actually lives at. Landing anywhere else doesn't count
+// as "back home," no matter how much time has passed since.
+const HOME_AIRPORT = "SLC";
+
+// Milliseconds -> "1 hour 15 minutes" / "40 minutes" / "2 hours", for the
+// "next flight in ..." countdown.
+function humanizeDuration(ms) {
+  const totalMin = Math.max(0, Math.round(ms / 60000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0 && m === 0) return "a few minutes";
+  if (h === 0) return `${m} minute${m === 1 ? "" : "s"}`;
+  if (m === 0) return `${h} hour${h === 1 ? "" : "s"}`;
+  return `${h} hour${h === 1 ? "" : "s"} ${m} minute${m === 1 ? "" : "s"}`;
+}
+
 // A casual day word for sentences: "today" / "tomorrow" / "Saturday".
 function whenWord(dateStr, now) {
   const lbl = dayLabel(dateStr, now);
@@ -597,10 +613,6 @@ function liveSummary(s, now) {
     }
   }
 
-  if (s.state === "complete") {
-    return { word: "Back home", line: "Andy is back home now." };
-  }
-
   const upcoming = sorted.filter((l) => legDates(l).dep > now);
   const past = sorted.filter((l) => legDates(l).arr <= now);
   const next = upcoming[0];
@@ -612,11 +624,34 @@ function liveSummary(s, now) {
     };
   }
 
-  // On the ground between legs.
-  const place = past[past.length - 1].toCity || past[past.length - 1].to;
+  const lastLanded = past[past.length - 1];
+  const place = lastLanded.toCity || lastLanded.to;
+
+  // Landed at home with nothing else on the books: the trip is actually over.
+  if (!next && lastLanded.to === HOME_AIRPORT) {
+    return { word: "Back home", line: "Andy is back home now." };
+  }
+
+  // No more legs in hand yet. He's not home, so it's an overnight, not "back home."
+  if (!next) {
+    return {
+      word: "Overnight",
+      line: `Andy is in ${place} on the overnight.`,
+    };
+  }
+
+  // Flying again later today: give a countdown instead of a day label.
+  if (dayLabel(next.date, now) === "Today") {
+    return {
+      word: "On the ground",
+      line: `Andy is in ${place} right now. Next flight in ${humanizeDuration(legDates(next).dep - now)}.`,
+    };
+  }
+
+  // Last leg of the day is down; the next one isn't until a later day.
   return {
-    word: "On the ground",
-    line: `Andy is in ${place} right now. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
+    word: "Overnight",
+    line: `Andy is in ${place} on the overnight. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
   };
 }
 
