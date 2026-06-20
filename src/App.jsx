@@ -194,10 +194,14 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   line-height: 1;
 }
 .cs-city {
-  font-size: 21px;
+  font-size: 15px;
   color: var(--muted);
   margin-top: 5px;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .cs-time {
   font-family: 'JetBrains Mono', monospace;
