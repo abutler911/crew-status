@@ -28,11 +28,13 @@ const css = `
   flex-direction: column;
   align-items: center;
   padding: 48px 20px 64px;
+  overflow-x: hidden;
 }
 
 .mono { font-family: 'JetBrains Mono', monospace; }
 
 .cs-shell { width: 100%; max-width: 560px; }
+.cs-field .cs-btn { flex-shrink: 0; white-space: nowrap; }
 
 .cs-eyebrow {
   font-family: 'JetBrains Mono', monospace;
@@ -56,6 +58,7 @@ const css = `
 .cs-field { display: flex; gap: 10px; }
 .cs-input {
   flex: 1;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -321,11 +324,33 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 }
 .cs-manual-link:hover { color: var(--text); }
 
+/* ---- date groups on the board ---- */
+.cs-daygroup { margin-bottom: 30px; }
+.cs-daygroup:last-of-type { margin-bottom: 0; }
+.cs-dayhead {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0 0 14px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cs-dayhead .cs-daydate { color: var(--muted); font-size: 22px; font-weight: 500; }
+
 @media (prefers-reduced-motion: reduce) {
   .cs-leg { animation: none !important; opacity: 1; transform: none; }
 }
 @media (max-width: 480px) {
-  .cs-status .word { font-size: 46px; }
+  .cs-gate h1 { font-size: 38px; }
+  .cs-status .word { font-size: 44px; }
+  .cs-dayhead { font-size: 25px; }
+  .cs-dayhead .cs-daydate { font-size: 20px; }
   .cs-grid, .cs-grid.b { grid-template-columns: 1fr 1fr; }
 }
 `;
@@ -346,6 +371,14 @@ function fmtDate(d) {
     month: "short",
     day: "numeric",
   });
+}
+
+// Weekday and date for the big group header, e.g. { dow: "Saturday", md: "June 21" }.
+function fmtDayHead(d) {
+  return {
+    dow: d.toLocaleDateString(undefined, { weekday: "long" }),
+    md: d.toLocaleDateString(undefined, { month: "long", day: "numeric" }),
+  };
 }
 
 // Builds a FlightAware link from a flight number. Strips a deadhead "DH" marker
@@ -649,63 +682,97 @@ function Viewer({ trip, now, onLock }) {
       </div>
       <div className="cs-rule" />
 
-      {s.sorted.map((leg, i) => {
-        const { dep, arr, nextDay } = legDates(leg);
-        const isActive = s.state === "active" && now >= dep && now <= arr;
-        const isDone = now > arr;
-        return (
-          <div
-            key={i}
-            className={`cs-leg ${isActive ? "active" : ""} ${isDone ? "done" : ""}`}
-            style={{ animationDelay: `${i * 0.07}s` }}
-          >
-            <div className="cs-legtop">
-              <a
-                className="cs-flight"
-                href={flightAwareUrl(leg.flight)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {leg.flight}
-              </a>
-              <span>{fmtDate(dep)}</span>
-              <span className="cs-tag">
-                {isActive ? "IN AIR" : isDone ? "FLOWN" : "SCHEDULED"}
-              </span>
+      {(() => {
+        // Group the sorted legs by their departure date.
+        const groups = [];
+        s.sorted.forEach((leg) => {
+          let g = groups.find((x) => x.date === leg.date);
+          if (!g) {
+            g = { date: leg.date, legs: [] };
+            groups.push(g);
+          }
+          g.legs.push(leg);
+        });
+        let order = 0;
+        return groups.map((g, gi) => {
+          const head = fmtDayHead(legDates(g.legs[0]).dep);
+          return (
+            <div className="cs-daygroup" key={g.date || gi}>
+              <div className="cs-dayhead">
+                <span>{head.dow}</span>
+                <span className="cs-daydate">{head.md}</span>
+              </div>
+              {g.legs.map((leg, li) => {
+                const { dep, arr, nextDay } = legDates(leg);
+                const isActive =
+                  s.state === "active" && now >= dep && now <= arr;
+                const isDone = now > arr;
+                const i = order++;
+                return (
+                  <div
+                    key={`${gi}-${li}`}
+                    className={`cs-leg ${isActive ? "active" : ""} ${isDone ? "done" : ""}`}
+                    style={{ animationDelay: `${i * 0.06}s` }}
+                  >
+                    <div className="cs-legtop">
+                      <a
+                        className="cs-flight"
+                        href={flightAwareUrl(leg.flight)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {leg.flight}
+                      </a>
+                      <span className="cs-tag">
+                        {isActive ? "IN AIR" : isDone ? "FLOWN" : "SCHEDULED"}
+                      </span>
+                    </div>
+                    <div className="cs-route">
+                      <div className="cs-port">
+                        <div className="cs-code">{leg.from}</div>
+                        {leg.fromCity ? (
+                          <div className="cs-city">{leg.fromCity}</div>
+                        ) : null}
+                        <div className="cs-time">{leg.depart}</div>
+                      </div>
+                      <div className="cs-arrow">
+                        <svg
+                          width="34"
+                          height="14"
+                          viewBox="0 0 34 14"
+                          fill="none"
+                        >
+                          <path
+                            d="M0 7h28"
+                            stroke="currentColor"
+                            strokeWidth="1"
+                          />
+                          <path
+                            d="M24 2l6 5-6 5"
+                            stroke="currentColor"
+                            strokeWidth="1"
+                            fill="none"
+                          />
+                        </svg>
+                      </div>
+                      <div className="cs-port to">
+                        <div className="cs-code">{leg.to}</div>
+                        {leg.toCity ? (
+                          <div className="cs-city">{leg.toCity}</div>
+                        ) : null}
+                        <div className="cs-time">
+                          {leg.arrive}
+                          {nextDay ? " +1" : ""}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="cs-route">
-              <div className="cs-port">
-                <div className="cs-code">{leg.from}</div>
-                {leg.fromCity ? (
-                  <div className="cs-city">{leg.fromCity}</div>
-                ) : null}
-                <div className="cs-time">{leg.depart}</div>
-              </div>
-              <div className="cs-arrow">
-                <svg width="34" height="14" viewBox="0 0 34 14" fill="none">
-                  <path d="M0 7h28" stroke="currentColor" strokeWidth="1" />
-                  <path
-                    d="M24 2l6 5-6 5"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    fill="none"
-                  />
-                </svg>
-              </div>
-              <div className="cs-port to">
-                <div className="cs-code">{leg.to}</div>
-                {leg.toCity ? (
-                  <div className="cs-city">{leg.toCity}</div>
-                ) : null}
-                <div className="cs-time">
-                  {leg.arrive}
-                  {nextDay ? " +1" : ""}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+          );
+        });
+      })()}
 
       <div className="cs-foot">
         <span>SLC · ANDY</span>
