@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import * as store from "./lib/store.js";
 
-// ---------------------------------------------------------------------------
-// Change these two codes to whatever you like.
-// In the artifact preview the check happens in the browser (fine, since this
-// data is public). When you deploy to your subdomain, these move to server
-// side env vars so the gate is real. See the notes in chat.
-// ---------------------------------------------------------------------------
-const VIEW_CODE = "homebase"; // give this one to Beth
-const ADMIN_CODE = "leftseat"; // keep this one to yourself
+// The access codes no longer live here. They are environment variables on the
+// server, and the gate checks them through /api/auth. Nothing secret ships to
+// the browser anymore.
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -392,16 +387,9 @@ function tripStatus(trip, now) {
 
 // Reads a pasted trip sheet of any format into structured legs via Claude.
 async function parseTripSheet(raw) {
-  // Sends the raw paste to our serverless function, which calls Claude with a
-  // secret API key and returns clean legs. The key never touches the browser.
-  const res = await fetch("/api/parse", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ raw }),
-  });
-  if (!res.ok) throw new Error("parse request failed");
-  const data = await res.json();
-  const legs = data.legs;
+  // store.parse sends the paste (with your admin code) to our serverless
+  // function, which calls Claude server-side and returns clean legs.
+  const legs = await store.parse(raw);
   if (!Array.isArray(legs)) throw new Error("bad shape");
   return legs.map((l) => ({
     date: l.date || "",
@@ -526,13 +514,15 @@ export default function App() {
       <div className="cs-shell">
         {screen === "gate" && (
           <Gate
-            resolve={(v) => {
-              const n = v.replace(/\s+/g, "").toLowerCase();
-              if (n === VIEW_CODE.toLowerCase()) {
-                loadTrip().then(() => setScreen("viewer"));
+            resolve={async (v) => {
+              const role = await store.authenticate(v.trim());
+              if (role === "view") {
+                await loadTrip();
+                setScreen("viewer");
                 return true;
               }
-              if (n === ADMIN_CODE.toLowerCase()) {
+              if (role === "admin") {
+                await loadTrip();
                 setScreen("admin");
                 return true;
               }
@@ -563,8 +553,17 @@ export default function App() {
 function Gate({ resolve }) {
   const [val, setVal] = useState("");
   const [err, setErr] = useState(false);
-  const submit = () => {
-    if (!resolve(val)) setErr(true);
+  const [checking, setChecking] = useState(false);
+  const submit = async () => {
+    if (checking || !val.trim()) return;
+    setChecking(true);
+    setErr(false);
+    const ok = await resolve(val);
+    if (!ok) {
+      setErr(true);
+      setChecking(false);
+    }
+    // on success the screen changes, so no need to reset checking
   };
   return (
     <div className="cs-gate">
@@ -588,8 +587,8 @@ function Gate({ resolve }) {
           onKeyDown={(e) => e.key === "Enter" && submit()}
           autoFocus
         />
-        <button className="cs-btn" onClick={submit}>
-          Enter
+        <button className="cs-btn" onClick={submit} disabled={checking}>
+          {checking ? "Checking" : "Enter"}
         </button>
       </div>
       {err && <div className="cs-err">Code not recognized. Try again.</div>}

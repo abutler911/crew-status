@@ -1,26 +1,42 @@
-// One serverless function handling the single trip record.
-// GET    /api/trip  -> returns the current trip (or null)
-// POST   /api/trip  -> saves the trip (body: { trip })
-// DELETE /api/trip  -> clears it
+// One serverless function handling the single trip record, now code-protected.
+// GET    /api/trip  -> returns the current trip; needs a valid code (view or admin)
+// POST   /api/trip  -> saves the trip; needs the admin code
+// DELETE /api/trip  -> clears it; needs the admin code
 //
-// Storage is Netlify Blobs: a key-value store built into your site. We keep one
-// store named "trips" and one key, "current". No database to set up.
-//
-// Note: there is no access-code check in here yet. We add that in step 6.
+// The caller sends its code in the "x-access-code" header. We re-check it here
+// on every request, because serverless functions keep no session.
 
 import { getStore } from "@netlify/blobs";
 
 const KEY = "current";
 
+function norm(s) {
+  return (s || "").replace(/\s+/g, "").toLowerCase();
+}
+
+function roleOf(req) {
+  const c = norm(req.headers.get("x-access-code"));
+  if (c && c === norm(process.env.ADMIN_CODE)) return "admin";
+  if (c && c === norm(process.env.VIEW_CODE)) return "view";
+  return null;
+}
+
 export default async (req) => {
   const store = getStore("trips");
+  const role = roleOf(req);
 
   if (req.method === "GET") {
+    if (role !== "admin" && role !== "view") {
+      return new Response("Unauthorized", { status: 401 });
+    }
     const trip = await store.get(KEY, { type: "json" });
     return Response.json({ trip: trip || null });
   }
 
   if (req.method === "POST") {
+    if (role !== "admin") {
+      return new Response("Forbidden", { status: 403 });
+    }
     let body;
     try {
       body = await req.json();
@@ -32,6 +48,9 @@ export default async (req) => {
   }
 
   if (req.method === "DELETE") {
+    if (role !== "admin") {
+      return new Response("Forbidden", { status: 403 });
+    }
     await store.delete(KEY);
     return Response.json({ ok: true });
   }

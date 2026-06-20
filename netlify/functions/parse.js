@@ -1,20 +1,28 @@
 // Parses a pasted trip sheet into structured legs by calling Claude.
-// POST /api/parse  body: { raw: "...paste..." }  ->  { legs: [...] }
-//
-// The Anthropic API key is read from an environment variable that lives only on
-// Netlify's servers (and your local .env). It is never sent to the browser.
+// POST /api/parse  body: { raw }  ->  { legs: [...] }
+// Requires the admin code in the "x-access-code" header, so only you can spend
+// the API budget. The Anthropic key stays server-side and never reaches a browser.
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+
+function norm(s) {
+  return (s || "").replace(/\s+/g, "").toLowerCase();
+}
 
 export default async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // Only the admin code may parse.
+  const c = norm(req.headers.get("x-access-code"));
+  if (!c || c !== norm(process.env.ADMIN_CODE)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   let raw;
   try {
-    const body = await req.json();
-    raw = body.raw;
+    raw = (await req.json()).raw;
   } catch {
     return new Response("Bad JSON", { status: 400 });
   }
