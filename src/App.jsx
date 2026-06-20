@@ -508,14 +508,61 @@ function liveSummary(s, now) {
   };
 }
 
+// FlightAware identifies flights by ICAO airline code (Delta is DAL, not DL),
+// so we translate the airline prefix before building the link. Covers Delta,
+// the Delta Connection regionals, the major US carriers, and a few partners;
+// anything unlisted falls back to the code as written.
+const IATA_TO_ICAO = {
+  DL: "DAL",
+  AA: "AAL",
+  UA: "UAL",
+  WN: "SWA",
+  AS: "ASA",
+  B6: "JBU",
+  F9: "FFT",
+  NK: "NKS",
+  HA: "HAL",
+  G4: "AAY",
+  SY: "SCX",
+  // Delta Connection / regional operators
+  OO: "SKW",
+  "9E": "EDV",
+  YX: "RPA",
+  MQ: "ENY",
+  OH: "JIA",
+  YV: "ASH",
+  G7: "GJS",
+  QX: "QXE",
+  ZW: "AWI",
+  PT: "PDT",
+  CP: "CPZ",
+  // common partners / international
+  AF: "AFR",
+  KL: "KLM",
+  LH: "DLH",
+  BA: "BAW",
+  VS: "VIR",
+  AM: "AMX",
+  AC: "ACA",
+  WS: "WJA",
+  KE: "KAL",
+  VA: "VOZ",
+};
+
 // Builds a FlightAware link from a flight number. Strips a deadhead "DH" marker
-// and any spaces, so "DL 2014" and "DH DL2014" both resolve. FlightAware accepts
-// the IATA ident and redirects to the live flight page.
+// and any spaces, then converts the airline code to ICAO (DL2014 -> DAL2014).
 function flightAwareUrl(flight) {
-  const ident = (flight || "")
+  const raw = (flight || "")
     .replace(/^DH\s*/i, "")
     .replace(/\s+/g, "")
     .toUpperCase();
+  let ident = raw;
+  const m = raw.match(/^([A-Z0-9]*?)(\d+)$/);
+  if (m) {
+    const code = m[1];
+    const num = m[2];
+    ident = (IATA_TO_ICAO[code] || code) + num;
+  }
   return "https://www.flightaware.com/live/flight/" + encodeURIComponent(ident);
 }
 
