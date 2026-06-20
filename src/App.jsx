@@ -11,15 +11,15 @@ const css = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 .cs-root {
-  --ink: #0e0d11;
-  --surface: #16141a;
-  --surface-2: #1d1a21;
-  --line: rgba(232,228,221,0.09);
-  --text: #e9e5de;
-  --muted: #8b857d;
-  --faint: #5f5a56;
-  --crimson: #cf3a4f;
-  --crimson-dim: rgba(207,58,79,0.14);
+  --ink: #f4f1ec;
+  --surface: #ffffff;
+  --surface-2: #f7f5f1;
+  --line: rgba(20,18,16,0.16);
+  --text: #1b1a18;
+  --muted: #524c45;
+  --faint: #6e675f;
+  --crimson: #be2639;
+  --crimson-dim: rgba(190,38,57,0.10);
   min-height: 100vh;
   background: var(--ink);
   color: var(--text);
@@ -36,8 +36,8 @@ const css = `
 
 .cs-eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.32em;
+  font-size: 12px;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--crimson);
   margin-bottom: 18px;
@@ -52,7 +52,7 @@ const css = `
   letter-spacing: -0.01em;
   margin-bottom: 10px;
 }
-.cs-gate p { color: var(--muted); font-size: 19px; margin-bottom: 28px; }
+.cs-gate p { color: var(--muted); font-size: 21px; margin-bottom: 28px; }
 .cs-field { display: flex; gap: 10px; }
 .cs-input {
   flex: 1;
@@ -61,9 +61,9 @@ const css = `
   border-radius: 6px;
   color: var(--text);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: 0.15em;
-  padding: 14px 16px;
+  padding: 15px 16px;
   outline: none;
   transition: border-color 0.18s ease;
 }
@@ -72,8 +72,8 @@ const css = `
 
 .cs-btn {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.18em;
+  font-size: 13px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   background: var(--crimson);
   color: #fff;
@@ -111,8 +111,8 @@ const css = `
 }
 .cs-status .sub {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12.5px;
-  letter-spacing: 0.06em;
+  font-size: 15px;
+  letter-spacing: 0.04em;
   color: var(--muted);
   margin-top: 14px;
 }
@@ -123,7 +123,8 @@ const css = `
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
-  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(20,18,16,0.05);
+  padding: 22px 24px;
   margin-bottom: 14px;
   position: relative;
   opacity: 0;
@@ -132,36 +133,36 @@ const css = `
 }
 @keyframes rise { to { opacity: 1; transform: none; } }
 .cs-leg.active {
-  border-color: rgba(207,58,79,0.5);
-  background: linear-gradient(var(--surface), var(--surface)) padding-box,
-              var(--surface);
-  box-shadow: inset 3px 0 0 var(--crimson);
+  border-color: rgba(190,38,57,0.45);
+  background: #fff6f7;
+  box-shadow: inset 4px 0 0 var(--crimson), 0 1px 3px rgba(20,18,16,0.06);
 }
-.cs-leg.done { opacity: 0.45; }
-.cs-leg.done.flown { animation: none; opacity: 0.45; transform: none; }
+.cs-leg.done { opacity: 0.66; }
+.cs-leg.done.flown { animation: none; opacity: 0.66; transform: none; }
 
 .cs-legtop {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-size: 13px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
   margin-bottom: 16px;
 }
-.cs-flight { color: var(--text); }
+.cs-flight { color: var(--text); font-weight: 500; }
 a.cs-flight {
   text-decoration: none;
-  border-bottom: 1px solid rgba(207,58,79,0.4);
+  border-bottom: 2px solid rgba(190,38,57,0.5);
   padding-bottom: 1px;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-color: var(--crimson); }
 .cs-tag {
   color: var(--crimson);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
+  font-weight: 700;
 }
 
 .cs-route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; }
@@ -169,23 +170,24 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 .cs-port.to { text-align: right; }
 .cs-code {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 30px;
+  font-size: 36px;
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1;
 }
 .cs-city {
-  font-size: 18px;
+  font-size: 21px;
   color: var(--muted);
-  margin-top: 4px;
-  font-style: italic;
+  margin-top: 5px;
+  line-height: 1.2;
 }
 .cs-time {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
+  font-size: 19px;
+  font-weight: 500;
   color: var(--text);
-  margin-top: 8px;
-  letter-spacing: 0.04em;
+  margin-top: 10px;
+  letter-spacing: 0.02em;
 }
 .cs-arrow { color: var(--faint); display: flex; align-items: center; justify-content: center; }
 .cs-arrow svg { display: block; }
@@ -203,8 +205,8 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   justify-content: space-between;
   align-items: center;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
   color: var(--faint);
 }
 .cs-link { color: var(--faint); cursor: pointer; text-decoration: none; }
@@ -222,7 +224,7 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 .cs-grid.b { grid-template-columns: 1fr 1fr; }
 .cs-lab {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--faint);
@@ -236,8 +238,8 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   border-radius: 6px;
   color: var(--text);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  padding: 11px 12px;
+  font-size: 16px;
+  padding: 12px 13px;
   outline: none;
 }
 .cs-in:focus { border-color: var(--crimson); }
@@ -264,10 +266,11 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 
 .cs-saved {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: #7bb88f;
-  letter-spacing: 0.05em;
+  font-size: 13px;
+  color: #1f7a44;
+  letter-spacing: 0.03em;
   margin-top: 16px;
+  line-height: 1.5;
 }
 
 .cs-area {
@@ -278,7 +281,7 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   border-radius: 8px;
   color: var(--text);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.6;
   padding: 14px 16px;
   outline: none;
