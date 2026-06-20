@@ -46,15 +46,27 @@ const css = `
 }
 
 /* ---- gate ---- */
-.cs-gate { margin-top: 8vh; }
-.cs-gate h1 {
-  font-size: 46px;
-  font-weight: 500;
-  line-height: 1.04;
-  letter-spacing: -0.01em;
-  margin-bottom: 10px;
+.cs-gate { margin-top: 14vh; }
+.cs-gate .cs-eyebrow { display: flex; align-items: center; gap: 12px; }
+.cs-gate .cs-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
 }
-.cs-gate p { color: var(--muted); font-size: 21px; margin-bottom: 28px; }
+.cs-gate h1 {
+  font-size: 58px;
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+  margin-bottom: 14px;
+}
+.cs-gate h1 em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--crimson);
+}
+.cs-gate p { color: var(--muted); font-size: 21px; margin-bottom: 32px; }
 .cs-field { display: flex; gap: 10px; }
 .cs-input {
   flex: 1;
@@ -397,7 +409,8 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   .cs-livedot { animation: none !important; }
 }
 @media (max-width: 480px) {
-  .cs-gate h1 { font-size: 38px; }
+  .cs-gate h1 { font-size: 42px; }
+  .cs-gate { margin-top: 10vh; }
   .cs-status .word { font-size: 44px; }
   .cs-dayhead { font-size: 25px; }
   .cs-dayhead .cs-daydate { font-size: 20px; }
@@ -803,9 +816,11 @@ function Gate({ resolve }) {
   };
   return (
     <div className="cs-gate">
-      <div className="cs-eyebrow">SLC · A220</div>
-      <h1>Crew status</h1>
-      <p>Enter your access code.</p>
+      <div className="cs-eyebrow">Private access</div>
+      <h1>
+        Where's <em>Andy</em>?
+      </h1>
+      <p>Enter your access code to see his status.</p>
       <div className="cs-field">
         <input
           className="cs-input"
