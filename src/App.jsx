@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import * as store from './lib/store.js';
+import React, { useState, useEffect, useMemo } from "react";
+import * as store from "./lib/store.js";
 
 // ---------------------------------------------------------------------------
 // Change these two codes to whatever you like.
@@ -7,8 +7,8 @@ import * as store from './lib/store.js';
 // data is public). When you deploy to your subdomain, these move to server
 // side env vars so the gate is real. See the notes in chat.
 // ---------------------------------------------------------------------------
-const VIEW_CODE = 'homebase'; // give this one to Beth
-const ADMIN_CODE = 'leftseat'; // keep this one to yourself
+const VIEW_CODE = "homebase"; // give this one to Beth
+const ADMIN_CODE = "leftseat"; // keep this one to yourself
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -157,6 +157,13 @@ const css = `
   margin-bottom: 16px;
 }
 .cs-flight { color: var(--text); }
+a.cs-flight {
+  text-decoration: none;
+  border-bottom: 1px solid rgba(207,58,79,0.4);
+  padding-bottom: 1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-color: var(--crimson); }
 .cs-tag {
   color: var(--crimson);
   letter-spacing: 0.18em;
@@ -337,10 +344,21 @@ function legDates(leg) {
 
 function fmtDate(d) {
   return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+    weekday: "short",
+    month: "short",
+    day: "numeric",
   });
+}
+
+// Builds a FlightAware link from a flight number. Strips a deadhead "DH" marker
+// and any spaces, so "DL 2014" and "DH DL2014" both resolve. FlightAware accepts
+// the IATA ident and redirects to the live flight page.
+function flightAwareUrl(flight) {
+  const ident = (flight || "")
+    .replace(/^DH\s*/i, "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  return "https://www.flightaware.com/live/flight/" + encodeURIComponent(ident);
 }
 
 // The instant a trip should delete itself: start of the second calendar day
@@ -350,7 +368,7 @@ function removeAt(trip) {
   if (!trip || !trip.legs || trip.legs.length === 0) return null;
   const last = trip.legs.reduce(
     (m, l) => Math.max(m, legDates(l).arr.getTime()),
-    0
+    0,
   );
   const d = new Date(last);
   d.setHours(0, 0, 0, 0);
@@ -359,41 +377,41 @@ function removeAt(trip) {
 }
 
 function tripStatus(trip, now) {
-  if (!trip || !trip.legs || trip.legs.length === 0) return { state: 'home' };
+  if (!trip || !trip.legs || trip.legs.length === 0) return { state: "home" };
   const sorted = [...trip.legs].sort(
-    (a, b) => legDates(a).dep - legDates(b).dep
+    (a, b) => legDates(a).dep - legDates(b).dep,
   );
   const first = legDates(sorted[0]).dep;
   const last = legDates(sorted[sorted.length - 1]).arr;
   const gone = removeAt(trip);
-  if (now >= gone) return { state: 'home', expired: true, sorted, first, last };
-  if (now < first) return { state: 'upcoming', sorted, first, last };
-  if (now > last) return { state: 'complete', sorted, first, last }; // landed, day-after grace
-  return { state: 'active', sorted, first, last };
+  if (now >= gone) return { state: "home", expired: true, sorted, first, last };
+  if (now < first) return { state: "upcoming", sorted, first, last };
+  if (now > last) return { state: "complete", sorted, first, last }; // landed, day-after grace
+  return { state: "active", sorted, first, last };
 }
 
 // Reads a pasted trip sheet of any format into structured legs via Claude.
 async function parseTripSheet(raw) {
   // Sends the raw paste to our serverless function, which calls Claude with a
   // secret API key and returns clean legs. The key never touches the browser.
-  const res = await fetch('/api/parse', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const res = await fetch("/api/parse", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ raw }),
   });
-  if (!res.ok) throw new Error('parse request failed');
+  if (!res.ok) throw new Error("parse request failed");
   const data = await res.json();
   const legs = data.legs;
-  if (!Array.isArray(legs)) throw new Error('bad shape');
+  if (!Array.isArray(legs)) throw new Error("bad shape");
   return legs.map((l) => ({
-    date: l.date || '',
-    flight: l.flight || '',
-    from: (l.from || '').toUpperCase(),
-    to: (l.to || '').toUpperCase(),
-    fromCity: l.fromCity || '',
-    toCity: l.toCity || '',
-    depart: l.depart || '',
-    arrive: l.arrive || '',
+    date: l.date || "",
+    flight: l.flight || "",
+    from: (l.from || "").toUpperCase(),
+    to: (l.to || "").toUpperCase(),
+    fromCity: l.fromCity || "",
+    toCity: l.toCity || "",
+    depart: l.depart || "",
+    arrive: l.arrive || "",
   }));
 }
 
@@ -401,23 +419,23 @@ async function parseTripSheet(raw) {
 // lands on the board instead of immediately auto-hiding as past.
 function examplePlaceholder() {
   const MON = [
-    'JAN',
-    'FEB',
-    'MAR',
-    'APR',
-    'MAY',
-    'JUN',
-    'JUL',
-    'AUG',
-    'SEP',
-    'OCT',
-    'NOV',
-    'DEC',
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
   ];
   const d = (offset) => {
     const x = new Date();
     x.setDate(x.getDate() + offset);
-    return String(x.getDate()).padStart(2, '0') + MON[x.getMonth()];
+    return String(x.getDate()).padStart(2, "0") + MON[x.getMonth()];
   };
   return (
     "Paste here. However it's formatted is fine. For example:\n\n" +
@@ -430,7 +448,7 @@ function examplePlaceholder() {
 // ---- app-------------------------------------------------------------------
 
 export default function App() {
-  const [screen, setScreen] = useState('loading'); // loading | gate | viewer | admin
+  const [screen, setScreen] = useState("loading"); // loading | gate | viewer | admin
   const [trip, setTrip] = useState(null);
   const [now, setNow] = useState(new Date());
 
@@ -479,20 +497,20 @@ export default function App() {
   useEffect(() => {
     (async () => {
       await loadTrip();
-      setScreen('gate');
+      setScreen("gate");
     })();
   }, []);
 
-  if (screen === 'loading') {
+  if (screen === "loading") {
     return (
-      <div className='cs-root'>
+      <div className="cs-root">
         <style>{css}</style>
         <div
-          className='cs-shell mono'
+          className="cs-shell mono"
           style={{
-            marginTop: '20vh',
-            color: '#5f5a56',
-            letterSpacing: '0.2em',
+            marginTop: "20vh",
+            color: "#5f5a56",
+            letterSpacing: "0.2em",
             fontSize: 12,
           }}
         >
@@ -503,19 +521,19 @@ export default function App() {
   }
 
   return (
-    <div className='cs-root'>
+    <div className="cs-root">
       <style>{css}</style>
-      <div className='cs-shell'>
-        {screen === 'gate' && (
+      <div className="cs-shell">
+        {screen === "gate" && (
           <Gate
             resolve={(v) => {
-              const n = v.replace(/\s+/g, '').toLowerCase();
+              const n = v.replace(/\s+/g, "").toLowerCase();
               if (n === VIEW_CODE.toLowerCase()) {
-                loadTrip().then(() => setScreen('viewer'));
+                loadTrip().then(() => setScreen("viewer"));
                 return true;
               }
               if (n === ADMIN_CODE.toLowerCase()) {
-                setScreen('admin');
+                setScreen("admin");
                 return true;
               }
               return false;
@@ -523,18 +541,18 @@ export default function App() {
           />
         )}
 
-        {screen === 'viewer' && (
-          <Viewer trip={trip} now={now} onLock={() => setScreen('gate')} />
+        {screen === "viewer" && (
+          <Viewer trip={trip} now={now} onLock={() => setScreen("gate")} />
         )}
 
-        {screen === 'admin' && (
+        {screen === "admin" && (
           <Admin
             trip={trip}
             onPublish={async (t) => {
               setTrip(t);
               await loadTrip();
             }}
-            onExit={() => setScreen('gate')}
+            onExit={() => setScreen("gate")}
           />
         )}
       </div>
@@ -543,38 +561,38 @@ export default function App() {
 }
 
 function Gate({ resolve }) {
-  const [val, setVal] = useState('');
+  const [val, setVal] = useState("");
   const [err, setErr] = useState(false);
   const submit = () => {
     if (!resolve(val)) setErr(true);
   };
   return (
-    <div className='cs-gate'>
-      <div className='cs-eyebrow'>SLC · A220</div>
+    <div className="cs-gate">
+      <div className="cs-eyebrow">SLC · A220</div>
       <h1>Crew status</h1>
       <p>Enter your access code.</p>
-      <div className='cs-field'>
+      <div className="cs-field">
         <input
-          className='cs-input'
-          type='password'
-          autoCapitalize='none'
-          autoCorrect='off'
-          autoComplete='off'
+          className="cs-input"
+          type="password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          autoComplete="off"
           spellCheck={false}
-          placeholder='ACCESS CODE'
+          placeholder="ACCESS CODE"
           value={val}
           onChange={(e) => {
             setVal(e.target.value);
             setErr(false);
           }}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
           autoFocus
         />
-        <button className='cs-btn' onClick={submit}>
+        <button className="cs-btn" onClick={submit}>
           Enter
         </button>
       </div>
-      {err && <div className='cs-err'>Code not recognized. Try again.</div>}
+      {err && <div className="cs-err">Code not recognized. Try again.</div>}
     </div>
   );
 }
@@ -582,20 +600,20 @@ function Gate({ resolve }) {
 function Viewer({ trip, now, onLock }) {
   const s = useMemo(() => tripStatus(trip, now), [trip, now]);
 
-  if (s.state === 'home') {
+  if (s.state === "home") {
     return (
       <div>
-        <div className='cs-eyebrow'>CREW STATUS</div>
-        <div className='cs-status'>
-          <div className='word'>Home</div>
-          <div className='sub'>
+        <div className="cs-eyebrow">CREW STATUS</div>
+        <div className="cs-status">
+          <div className="word">Home</div>
+          <div className="sub">
             No active trip on the board. Updated when the next one is published.
           </div>
         </div>
-        <div className='cs-rule' />
-        <div className='cs-foot'>
+        <div className="cs-rule" />
+        <div className="cs-foot">
           <span>SLC · ANDY</span>
-          <span className='cs-link' onClick={onLock}>
+          <span className="cs-link" onClick={onLock}>
             Lock
           </span>
         </div>
@@ -604,75 +622,82 @@ function Viewer({ trip, now, onLock }) {
   }
 
   const word =
-    s.state === 'upcoming'
-      ? 'Trip ahead'
-      : s.state === 'complete'
-        ? 'Back home'
-        : 'Flying';
+    s.state === "upcoming"
+      ? "Trip ahead"
+      : s.state === "complete"
+        ? "Back home"
+        : "Flying";
   const range =
     fmtDate(s.first) === fmtDate(s.last)
       ? fmtDate(s.first)
       : `${fmtDate(s.first)} — ${fmtDate(s.last)}`;
   const sub =
-    s.state === 'upcoming'
-      ? `Departs ${fmtDate(s.first)} · ${s.sorted.length} leg${s.sorted.length > 1 ? 's' : ''}`
-      : s.state === 'complete'
+    s.state === "upcoming"
+      ? `Departs ${fmtDate(s.first)} · ${s.sorted.length} leg${s.sorted.length > 1 ? "s" : ""}`
+      : s.state === "complete"
         ? `Landed ${fmtDate(s.last)} · clears tomorrow`
-        : `${range.replace(' — ', ' to ')} · ${s.sorted.length} leg${s.sorted.length > 1 ? 's' : ''}`;
+        : `${range.replace(" — ", " to ")} · ${s.sorted.length} leg${s.sorted.length > 1 ? "s" : ""}`;
 
   return (
     <div>
-      <div className='cs-eyebrow'>CREW STATUS</div>
-      <div className='cs-status'>
-        <div className='word'>{word}</div>
-        <div className='sub'>{sub}</div>
+      <div className="cs-eyebrow">CREW STATUS</div>
+      <div className="cs-status">
+        <div className="word">{word}</div>
+        <div className="sub">{sub}</div>
       </div>
-      <div className='cs-rule' />
+      <div className="cs-rule" />
 
       {s.sorted.map((leg, i) => {
         const { dep, arr, nextDay } = legDates(leg);
-        const isActive = s.state === 'active' && now >= dep && now <= arr;
+        const isActive = s.state === "active" && now >= dep && now <= arr;
         const isDone = now > arr;
         return (
           <div
             key={i}
-            className={`cs-leg ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}
+            className={`cs-leg ${isActive ? "active" : ""} ${isDone ? "done" : ""}`}
             style={{ animationDelay: `${i * 0.07}s` }}
           >
-            <div className='cs-legtop'>
-              <span className='cs-flight'>{leg.flight}</span>
+            <div className="cs-legtop">
+              <a
+                className="cs-flight"
+                href={flightAwareUrl(leg.flight)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {leg.flight}
+              </a>
               <span>{fmtDate(dep)}</span>
-              <span className='cs-tag'>
-                {isActive ? 'IN AIR' : isDone ? 'FLOWN' : 'SCHEDULED'}
+              <span className="cs-tag">
+                {isActive ? "IN AIR" : isDone ? "FLOWN" : "SCHEDULED"}
               </span>
             </div>
-            <div className='cs-route'>
-              <div className='cs-port'>
-                <div className='cs-code'>{leg.from}</div>
+            <div className="cs-route">
+              <div className="cs-port">
+                <div className="cs-code">{leg.from}</div>
                 {leg.fromCity ? (
-                  <div className='cs-city'>{leg.fromCity}</div>
+                  <div className="cs-city">{leg.fromCity}</div>
                 ) : null}
-                <div className='cs-time'>{leg.depart}</div>
+                <div className="cs-time">{leg.depart}</div>
               </div>
-              <div className='cs-arrow'>
-                <svg width='34' height='14' viewBox='0 0 34 14' fill='none'>
-                  <path d='M0 7h28' stroke='currentColor' strokeWidth='1' />
+              <div className="cs-arrow">
+                <svg width="34" height="14" viewBox="0 0 34 14" fill="none">
+                  <path d="M0 7h28" stroke="currentColor" strokeWidth="1" />
                   <path
-                    d='M24 2l6 5-6 5'
-                    stroke='currentColor'
-                    strokeWidth='1'
-                    fill='none'
+                    d="M24 2l6 5-6 5"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    fill="none"
                   />
                 </svg>
               </div>
-              <div className='cs-port to'>
-                <div className='cs-code'>{leg.to}</div>
+              <div className="cs-port to">
+                <div className="cs-code">{leg.to}</div>
                 {leg.toCity ? (
-                  <div className='cs-city'>{leg.toCity}</div>
+                  <div className="cs-city">{leg.toCity}</div>
                 ) : null}
-                <div className='cs-time'>
+                <div className="cs-time">
                   {leg.arrive}
-                  {nextDay ? ' +1' : ''}
+                  {nextDay ? " +1" : ""}
                 </div>
               </div>
             </div>
@@ -680,9 +705,9 @@ function Viewer({ trip, now, onLock }) {
         );
       })}
 
-      <div className='cs-foot'>
+      <div className="cs-foot">
         <span>SLC · ANDY</span>
-        <span className='cs-link' onClick={onLock}>
+        <span className="cs-link" onClick={onLock}>
           Lock
         </span>
       </div>
@@ -691,21 +716,21 @@ function Viewer({ trip, now, onLock }) {
 }
 
 function Admin({ trip, onPublish, onExit }) {
-  const [raw, setRaw] = useState('');
+  const [raw, setRaw] = useState("");
   const [legs, setLegs] = useState(trip?.legs ? [...trip.legs] : []);
   const [parsing, setParsing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
   const [showManual, setShowManual] = useState(false);
   const [draft, setDraft] = useState({
-    date: '',
-    flight: '',
-    from: '',
-    fromCity: '',
-    to: '',
-    toCity: '',
-    depart: '',
-    arrive: '',
+    date: "",
+    flight: "",
+    from: "",
+    fromCity: "",
+    to: "",
+    toCity: "",
+    depart: "",
+    arrive: "",
   });
 
   const up = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
@@ -713,17 +738,17 @@ function Admin({ trip, onPublish, onExit }) {
   const format = async () => {
     if (!raw.trim()) return;
     setParsing(true);
-    setNote('');
+    setNote("");
     try {
       const result = await parseTripSheet(raw);
       if (result.length === 0) {
         setNote(
-          "Couldn't find any legs in that. Check the paste, or add one by hand below."
+          "Couldn't find any legs in that. Check the paste, or add one by hand below.",
         );
       } else {
         setLegs(result);
         setNote(
-          `Read ${result.length} leg${result.length > 1 ? 's' : ''}. Check it looks right, then publish.`
+          `Read ${result.length} leg${result.length > 1 ? "s" : ""}. Check it looks right, then publish.`,
         );
       }
     } catch {
@@ -748,13 +773,13 @@ function Admin({ trip, onPublish, onExit }) {
     ]);
     setDraft({
       date: draft.date,
-      flight: '',
-      from: '',
-      fromCity: '',
-      to: '',
-      toCity: '',
-      depart: '',
-      arrive: '',
+      flight: "",
+      from: "",
+      fromCity: "",
+      to: "",
+      toCity: "",
+      depart: "",
+      arrive: "",
     });
   };
   const removeLeg = (i) => setLegs((l) => l.filter((_, idx) => idx !== i));
@@ -766,21 +791,21 @@ function Admin({ trip, onPublish, onExit }) {
       await store.saveTrip(t);
       await onPublish(t);
       const s = tripStatus(t, new Date());
-      if (s.state === 'home') {
+      if (s.state === "home") {
         setNote(
-          'Saved, but this trip is already past its display window, so the board shows Home. Publish a current or upcoming trip to see it.'
+          "Saved, but this trip is already past its display window, so the board shows Home. Publish a current or upcoming trip to see it.",
         );
-      } else if (s.state === 'upcoming') {
-        setNote('Published. Beth sees it as an upcoming trip.');
-      } else if (s.state === 'complete') {
+      } else if (s.state === "upcoming") {
+        setNote("Published. Beth sees it as an upcoming trip.");
+      } else if (s.state === "complete") {
         setNote(
-          'Published. Shows as just landed; it clears on its own after tomorrow.'
+          "Published. Shows as just landed; it clears on its own after tomorrow.",
         );
       } else {
-        setNote('Published. Beth sees this now.');
+        setNote("Published. Beth sees this now.");
       }
     } catch (e) {
-      setNote('Could not save: ' + (e && e.message ? e.message : String(e)));
+      setNote("Could not save: " + (e && e.message ? e.message : String(e)));
     }
     setBusy(false);
   };
@@ -792,86 +817,86 @@ function Admin({ trip, onPublish, onExit }) {
       await store.saveTrip(t);
       await onPublish(t);
       setLegs([]);
-      setRaw('');
-      setNote('Board cleared. Shows as Home.');
+      setRaw("");
+      setNote("Board cleared. Shows as Home.");
     } catch {
-      setNote('Could not save. Try again.');
+      setNote("Could not save. Try again.");
     }
     setBusy(false);
   };
 
   return (
-    <div className='cs-admin'>
-      <div className='cs-eyebrow'>FLIGHT DECK</div>
+    <div className="cs-admin">
+      <div className="cs-eyebrow">FLIGHT DECK</div>
       <h2>Drop in a trip</h2>
-      <p className='hint'>
+      <p className="hint">
         Paste your trip sheet. However it's formatted is fine.
       </p>
 
       <textarea
-        className='cs-area'
+        className="cs-area"
         placeholder={examplePlaceholder()}
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
       />
-      <div className='cs-actions' style={{ marginTop: 12 }}>
+      <div className="cs-actions" style={{ marginTop: 12 }}>
         <button
-          className='cs-btn'
+          className="cs-btn"
           onClick={format}
           disabled={parsing || !raw.trim()}
         >
           {parsing ? (
             <>
-              <span className='cs-spin' />
+              <span className="cs-spin" />
               Reading
             </>
           ) : (
-            'Format trip'
+            "Format trip"
           )}
         </button>
       </div>
 
       {legs.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <span className='cs-lab'>Preview · what Beth will see</span>
+          <span className="cs-lab">Preview · what Beth will see</span>
           {legs.map((leg, i) => (
-            <div className='cs-leg flown done' key={i} style={{ opacity: 1 }}>
-              <div className='cs-legtop'>
-                <span className='cs-flight'>{leg.flight}</span>
+            <div className="cs-leg flown done" key={i} style={{ opacity: 1 }}>
+              <div className="cs-legtop">
+                <span className="cs-flight">{leg.flight}</span>
                 <span>{leg.date}</span>
                 <span
-                  className='cs-x'
+                  className="cs-x"
                   onClick={() => removeLeg(i)}
                   style={{ padding: 0 }}
                 >
                   ×
                 </span>
               </div>
-              <div className='cs-route'>
-                <div className='cs-port'>
-                  <div className='cs-code'>{leg.from}</div>
+              <div className="cs-route">
+                <div className="cs-port">
+                  <div className="cs-code">{leg.from}</div>
                   {leg.fromCity ? (
-                    <div className='cs-city'>{leg.fromCity}</div>
+                    <div className="cs-city">{leg.fromCity}</div>
                   ) : null}
-                  <div className='cs-time'>{leg.depart}</div>
+                  <div className="cs-time">{leg.depart}</div>
                 </div>
-                <div className='cs-arrow'>
-                  <svg width='34' height='14' viewBox='0 0 34 14' fill='none'>
-                    <path d='M0 7h28' stroke='currentColor' strokeWidth='1' />
+                <div className="cs-arrow">
+                  <svg width="34" height="14" viewBox="0 0 34 14" fill="none">
+                    <path d="M0 7h28" stroke="currentColor" strokeWidth="1" />
                     <path
-                      d='M24 2l6 5-6 5'
-                      stroke='currentColor'
-                      strokeWidth='1'
-                      fill='none'
+                      d="M24 2l6 5-6 5"
+                      stroke="currentColor"
+                      strokeWidth="1"
+                      fill="none"
                     />
                   </svg>
                 </div>
-                <div className='cs-port to'>
-                  <div className='cs-code'>{leg.to}</div>
+                <div className="cs-port to">
+                  <div className="cs-code">{leg.to}</div>
                   {leg.toCity ? (
-                    <div className='cs-city'>{leg.toCity}</div>
+                    <div className="cs-city">{leg.toCity}</div>
                   ) : null}
-                  <div className='cs-time'>{leg.arrive}</div>
+                  <div className="cs-time">{leg.arrive}</div>
                 </div>
               </div>
             </div>
@@ -880,98 +905,98 @@ function Admin({ trip, onPublish, onExit }) {
       )}
 
       {!showManual ? (
-        <div className='cs-or'>
-          <span className='cs-manual-link' onClick={() => setShowManual(true)}>
+        <div className="cs-or">
+          <span className="cs-manual-link" onClick={() => setShowManual(true)}>
             add a leg by hand
           </span>
         </div>
       ) : (
         <div style={{ marginTop: 22 }}>
-          <span className='cs-lab'>Date · flight</span>
-          <div className='cs-grid b'>
+          <span className="cs-lab">Date · flight</span>
+          <div className="cs-grid b">
             <input
-              className='cs-in'
-              type='date'
+              className="cs-in"
+              type="date"
               value={draft.date}
-              onChange={(e) => up('date', e.target.value)}
+              onChange={(e) => up("date", e.target.value)}
             />
             <input
-              className='cs-in'
-              placeholder='DL 1234'
+              className="cs-in"
+              placeholder="DL 1234"
               value={draft.flight}
-              onChange={(e) => up('flight', e.target.value)}
+              onChange={(e) => up("flight", e.target.value)}
             />
           </div>
-          <span className='cs-lab'>From · city · depart</span>
-          <div className='cs-grid'>
+          <span className="cs-lab">From · city · depart</span>
+          <div className="cs-grid">
             <input
-              className='cs-in'
-              placeholder='SLC'
+              className="cs-in"
+              placeholder="SLC"
               maxLength={4}
               value={draft.from}
-              onChange={(e) => up('from', e.target.value.toUpperCase())}
+              onChange={(e) => up("from", e.target.value.toUpperCase())}
             />
             <input
-              className='cs-in'
-              placeholder='Salt Lake'
+              className="cs-in"
+              placeholder="Salt Lake"
               value={draft.fromCity}
-              onChange={(e) => up('fromCity', e.target.value)}
+              onChange={(e) => up("fromCity", e.target.value)}
             />
             <input
-              className='cs-in'
-              type='time'
+              className="cs-in"
+              type="time"
               value={draft.depart}
-              onChange={(e) => up('depart', e.target.value)}
+              onChange={(e) => up("depart", e.target.value)}
             />
           </div>
-          <span className='cs-lab'>To · city · arrive</span>
-          <div className='cs-grid'>
+          <span className="cs-lab">To · city · arrive</span>
+          <div className="cs-grid">
             <input
-              className='cs-in'
-              placeholder='LAX'
+              className="cs-in"
+              placeholder="LAX"
               maxLength={4}
               value={draft.to}
-              onChange={(e) => up('to', e.target.value.toUpperCase())}
+              onChange={(e) => up("to", e.target.value.toUpperCase())}
             />
             <input
-              className='cs-in'
-              placeholder='Los Angeles'
+              className="cs-in"
+              placeholder="Los Angeles"
               value={draft.toCity}
-              onChange={(e) => up('toCity', e.target.value)}
+              onChange={(e) => up("toCity", e.target.value)}
             />
             <input
-              className='cs-in'
-              type='time'
+              className="cs-in"
+              type="time"
               value={draft.arrive}
-              onChange={(e) => up('arrive', e.target.value)}
+              onChange={(e) => up("arrive", e.target.value)}
             />
           </div>
-          <div className='cs-actions' style={{ marginTop: 12 }}>
-            <button className='cs-btn ghost' onClick={addLeg}>
+          <div className="cs-actions" style={{ marginTop: 12 }}>
+            <button className="cs-btn ghost" onClick={addLeg}>
               Add leg
             </button>
           </div>
         </div>
       )}
 
-      <div className='cs-actions'>
+      <div className="cs-actions">
         <button
-          className='cs-btn'
+          className="cs-btn"
           onClick={publish}
           disabled={busy || legs.length === 0}
         >
           Publish trip
         </button>
-        <button className='cs-btn ghost' onClick={clearBoard} disabled={busy}>
+        <button className="cs-btn ghost" onClick={clearBoard} disabled={busy}>
           Clear board
         </button>
       </div>
 
-      {note && <div className='cs-saved'>{note}</div>}
+      {note && <div className="cs-saved">{note}</div>}
 
-      <div className='cs-foot'>
+      <div className="cs-foot">
         <span />
-        <span className='cs-link' onClick={onExit}>
+        <span className="cs-link" onClick={onExit}>
           Exit
         </span>
       </div>
