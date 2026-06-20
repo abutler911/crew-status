@@ -113,11 +113,12 @@ const css = `
   letter-spacing: -0.015em;
 }
 .cs-status .sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin-top: 14px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 22px;
+  line-height: 1.35;
+  letter-spacing: 0;
+  color: var(--text);
+  margin-top: 12px;
 }
 .cs-rule { height: 1px; background: var(--line); margin: 30px 0; }
 
@@ -343,6 +344,32 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 }
 .cs-dayhead .cs-daydate { color: var(--muted); font-size: 22px; font-weight: 500; }
 
+/* relative-day chip in the header */
+.cs-dayhead .cs-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--crimson);
+  color: #fff;
+  align-self: center;
+}
+.cs-dayhead .cs-chip.soft { background: transparent; color: var(--crimson); border: 1.5px solid var(--crimson); padding: 3px 9px; }
+.cs-dayhead .cs-chip.past { background: transparent; color: var(--faint); border: 1.5px solid var(--line); padding: 3px 9px; }
+
+/* the whole "today" section is highlighted so it's obvious at a glance */
+.cs-daygroup.today {
+  background: rgba(190,38,57,0.06);
+  border: 1.5px solid rgba(190,38,57,0.28);
+  border-radius: 14px;
+  padding: 18px 16px 6px;
+}
+.cs-daygroup.today .cs-dayhead { color: var(--crimson); border-bottom-color: rgba(190,38,57,0.3); }
+.cs-daygroup.today .cs-dayhead .cs-daydate { color: var(--crimson); opacity: 0.85; }
+
 @media (prefers-reduced-motion: reduce) {
   .cs-leg { animation: none !important; opacity: 1; transform: none; }
 }
@@ -378,6 +405,83 @@ function fmtDayHead(d) {
   return {
     dow: d.toLocaleDateString(undefined, { weekday: "long" }),
     md: d.toLocaleDateString(undefined, { month: "long", day: "numeric" }),
+  };
+}
+
+// "09:15" -> "9:15 AM". Friendlier to read than 24-hour.
+function fmtTime(hhmm) {
+  if (!hhmm || hhmm.indexOf(":") < 0) return hhmm || "";
+  const [hStr, mStr] = hhmm.split(":");
+  let h = parseInt(hStr, 10);
+  const m = mStr.padStart(2, "0");
+  const ap = h < 12 ? "AM" : "PM";
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${m} ${ap}`;
+}
+
+// Returns "Today" / "Tomorrow" / "Yesterday" for a YYYY-MM-DD date, else null.
+function dayLabel(dateStr, now) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + "T00:00:00");
+  const t = new Date(now);
+  t.setHours(0, 0, 0, 0);
+  const diff = Math.round((d - t) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff === -1) return "Yesterday";
+  return null;
+}
+
+// A casual day word for sentences: "today" / "tomorrow" / "Saturday".
+function whenWord(dateStr, now) {
+  const lbl = dayLabel(dateStr, now);
+  if (lbl) return lbl.toLowerCase();
+  return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, {
+    weekday: "long",
+  });
+}
+
+// Plain-language answer to "where is Andy right now?" plus a big status word.
+function liveSummary(s, now) {
+  if (s.state === "home") {
+    return { word: "Home", line: "Andy is home right now." };
+  }
+  const sorted = s.sorted;
+
+  // In the air on a specific leg?
+  for (const leg of sorted) {
+    const { dep, arr } = legDates(leg);
+    if (now >= dep && now <= arr) {
+      const from = leg.fromCity || leg.from;
+      const to = leg.toCity || leg.to;
+      return {
+        word: "In the air",
+        line: `Andy is flying from ${from} to ${to}, landing ${fmtTime(leg.arrive)}.`,
+      };
+    }
+  }
+
+  if (s.state === "complete") {
+    return { word: "Back home", line: "Andy is back home now." };
+  }
+
+  const upcoming = sorted.filter((l) => legDates(l).dep > now);
+  const past = sorted.filter((l) => legDates(l).arr <= now);
+  const next = upcoming[0];
+
+  if (past.length === 0) {
+    return {
+      word: "Trip ahead",
+      line: `Andy leaves ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
+    };
+  }
+
+  // On the ground between legs.
+  const place = past[past.length - 1].toCity || past[past.length - 1].to;
+  return {
+    word: "On the ground",
+    line: `Andy is in ${place} right now. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
   };
 }
 
@@ -642,7 +746,7 @@ function Viewer({ trip, now, onLock }) {
         <div className="cs-status">
           <div className="word">Home</div>
           <div className="sub">
-            No active trip on the board. Updated when the next one is published.
+            Andy is home right now. This updates when his next trip is posted.
           </div>
         </div>
         <div className="cs-rule" />
@@ -656,29 +760,14 @@ function Viewer({ trip, now, onLock }) {
     );
   }
 
-  const word =
-    s.state === "upcoming"
-      ? "Trip ahead"
-      : s.state === "complete"
-        ? "Back home"
-        : "Flying";
-  const range =
-    fmtDate(s.first) === fmtDate(s.last)
-      ? fmtDate(s.first)
-      : `${fmtDate(s.first)} — ${fmtDate(s.last)}`;
-  const sub =
-    s.state === "upcoming"
-      ? `Departs ${fmtDate(s.first)} · ${s.sorted.length} leg${s.sorted.length > 1 ? "s" : ""}`
-      : s.state === "complete"
-        ? `Landed ${fmtDate(s.last)} · clears tomorrow`
-        : `${range.replace(" — ", " to ")} · ${s.sorted.length} leg${s.sorted.length > 1 ? "s" : ""}`;
+  const summary = liveSummary(s, now);
 
   return (
     <div>
       <div className="cs-eyebrow">CREW STATUS</div>
       <div className="cs-status">
-        <div className="word">{word}</div>
-        <div className="sub">{sub}</div>
+        <div className="word">{summary.word}</div>
+        <div className="sub">{summary.line}</div>
       </div>
       <div className="cs-rule" />
 
@@ -696,9 +785,20 @@ function Viewer({ trip, now, onLock }) {
         let order = 0;
         return groups.map((g, gi) => {
           const head = fmtDayHead(legDates(g.legs[0]).dep);
+          const rel = dayLabel(g.date, now);
+          const isToday = rel === "Today";
+          const chipClass = isToday
+            ? "cs-chip"
+            : rel === "Tomorrow"
+              ? "cs-chip soft"
+              : "cs-chip past";
           return (
-            <div className="cs-daygroup" key={g.date || gi}>
+            <div
+              className={`cs-daygroup ${isToday ? "today" : ""}`}
+              key={g.date || gi}
+            >
               <div className="cs-dayhead">
+                {rel ? <span className={chipClass}>{rel}</span> : null}
                 <span>{head.dow}</span>
                 <span className="cs-daydate">{head.md}</span>
               </div>
@@ -724,7 +824,11 @@ function Viewer({ trip, now, onLock }) {
                         {leg.flight}
                       </a>
                       <span className="cs-tag">
-                        {isActive ? "IN AIR" : isDone ? "FLOWN" : "SCHEDULED"}
+                        {isActive
+                          ? "IN AIR NOW"
+                          : isDone
+                            ? "LANDED"
+                            : "SCHEDULED"}
                       </span>
                     </div>
                     <div className="cs-route">
@@ -733,7 +837,7 @@ function Viewer({ trip, now, onLock }) {
                         {leg.fromCity ? (
                           <div className="cs-city">{leg.fromCity}</div>
                         ) : null}
-                        <div className="cs-time">{leg.depart}</div>
+                        <div className="cs-time">{fmtTime(leg.depart)}</div>
                       </div>
                       <div className="cs-arrow">
                         <svg
@@ -761,8 +865,8 @@ function Viewer({ trip, now, onLock }) {
                           <div className="cs-city">{leg.toCity}</div>
                         ) : null}
                         <div className="cs-time">
-                          {leg.arrive}
-                          {nextDay ? " +1" : ""}
+                          {fmtTime(leg.arrive)}
+                          {nextDay ? " (next day)" : ""}
                         </div>
                       </div>
                     </div>
