@@ -137,9 +137,9 @@ const css = `
 }
 @keyframes rise { to { opacity: 1; transform: none; } }
 .cs-leg.active {
-  border-color: rgba(190,38,57,0.45);
-  background: #fff6f7;
-  box-shadow: inset 4px 0 0 var(--crimson), 0 1px 3px rgba(20,18,16,0.06);
+  border: 2px solid var(--crimson);
+  background: #fff1f3;
+  box-shadow: 0 0 0 4px rgba(190,38,57,0.12), 0 4px 14px rgba(190,38,57,0.18);
 }
 .cs-leg.done { opacity: 0.66; }
 .cs-leg.done.flown { animation: none; opacity: 0.66; transform: none; }
@@ -167,6 +167,20 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   color: var(--crimson);
   letter-spacing: 0.14em;
   font-weight: 700;
+}
+.cs-livedot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--crimson);
+  margin-right: 7px;
+  vertical-align: middle;
+  animation: livepulse 1.4s ease-in-out infinite;
+}
+@keyframes livepulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.65); }
 }
 
 .cs-route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; }
@@ -372,6 +386,7 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 
 @media (prefers-reduced-motion: reduce) {
   .cs-leg { animation: none !important; opacity: 1; transform: none; }
+  .cs-livedot { animation: none !important; }
 }
 @media (max-width: 480px) {
   .cs-gate h1 { font-size: 38px; }
@@ -632,8 +647,16 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      await loadTrip();
-      setScreen("gate");
+      const role = await store.resume();
+      if (role === "view") {
+        await loadTrip();
+        setScreen("viewer");
+      } else if (role === "admin") {
+        await loadTrip();
+        setScreen("admin");
+      } else {
+        setScreen("gate");
+      }
     })();
   }, []);
 
@@ -680,7 +703,14 @@ export default function App() {
         )}
 
         {screen === "viewer" && (
-          <Viewer trip={trip} now={now} onLock={() => setScreen("gate")} />
+          <Viewer
+            trip={trip}
+            now={now}
+            onLock={() => {
+              store.signOut();
+              setScreen("gate");
+            }}
+          />
         )}
 
         {screen === "admin" && (
@@ -690,7 +720,10 @@ export default function App() {
               setTrip(t);
               await loadTrip();
             }}
-            onExit={() => setScreen("gate")}
+            onExit={() => {
+              store.signOut();
+              setScreen("gate");
+            }}
           />
         )}
       </div>
@@ -832,6 +865,7 @@ function Viewer({ trip, now, onLock }) {
                         {leg.flight}
                       </a>
                       <span className="cs-tag">
+                        {isActive ? <span className="cs-livedot" /> : null}
                         {isActive
                           ? "IN AIR NOW"
                           : isDone

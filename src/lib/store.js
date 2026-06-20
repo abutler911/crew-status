@@ -1,15 +1,16 @@
 // All talk to the server lives here. After the gate authenticates, we keep the
-// typed code in memory and attach it to every request as a header. The server
-// re-checks it on each call, since serverless functions have no sessions.
+// typed code both in memory and saved on the device, so a refresh (or reopening
+// the installed app) stays signed in. "Lock" clears it.
 
 let accessCode = null;
+const CODE_KEY = "cs-access-code";
 
 function authHeaders(extra) {
   return { ...(extra || {}), "x-access-code": accessCode || "" };
 }
 
 // Sends the typed code to the server, which says whether it's "admin", "view",
-// or invalid. On success we remember the code for later requests.
+// or invalid. On success we remember the code, in memory and on the device.
 export async function authenticate(code) {
   try {
     const res = await fetch("/api/auth", {
@@ -21,6 +22,9 @@ export async function authenticate(code) {
     const data = await res.json();
     if (data.role === "admin" || data.role === "view") {
       accessCode = code;
+      try {
+        localStorage.setItem(CODE_KEY, code);
+      } catch {}
       return data.role;
     }
     return null;
@@ -29,8 +33,29 @@ export async function authenticate(code) {
   }
 }
 
+// On app load: if a code was saved on this device, re-check it with the server
+// and return the role, so we can skip the gate. Returns null if nothing saved
+// or the saved code is no longer valid.
+export async function resume() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(CODE_KEY);
+  } catch {}
+  if (!saved) return null;
+  const role = await authenticate(saved);
+  if (!role) {
+    try {
+      localStorage.removeItem(CODE_KEY);
+    } catch {}
+  }
+  return role;
+}
+
 export function signOut() {
   accessCode = null;
+  try {
+    localStorage.removeItem(CODE_KEY);
+  } catch {}
 }
 
 export async function getTrip() {
