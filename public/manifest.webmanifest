@@ -1,7 +1,7 @@
 {
-  "name": "Where's Andy?",
-  "short_name": "Andy",
-  "description": "Andy's current flight trip.",
+  "name": "Where's Babe-a?",
+  "short_name": "Babe-a",
+  "description": "Babe-a's current flight trip.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

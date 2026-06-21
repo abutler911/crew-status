@@ -278,6 +278,56 @@ const css = `
   text-overflow: ellipsis;
 }
 
+/* ---- how-to-read helper ---- */
+.cs-help {
+  margin-bottom: 22px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.cs-help-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 9px;
+}
+.cs-help ul { list-style: none; margin: 0; padding: 0; }
+.cs-help li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.cs-help li:last-child { margin-bottom: 0; }
+.cs-help li::before {
+  content: '·';
+  position: absolute;
+  left: 6px;
+  color: var(--crimson);
+  font-weight: 700;
+}
+.cs-help strong { color: var(--text); font-weight: 600; }
+
+/* ---- credit footer ---- */
+.cs-credit {
+  width: 100%;
+  max-width: 560px;
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.cs-credit .cs-heart { color: var(--crimson); }
+
 /* ---- legs ---- */
 .cs-leg {
   border: 1px solid var(--line);
@@ -872,7 +922,7 @@ function whenWord(dateStr, now) {
 // Plain-language answer to "where is Andy right now?" plus a big status word.
 function liveSummary(s, now) {
   if (s.state === "home") {
-    return { word: "Home", line: "Andy is home right now." };
+    return { word: "Home", line: "Babe-a is home right now." };
   }
   const sorted = s.sorted;
 
@@ -884,7 +934,7 @@ function liveSummary(s, now) {
       const to = leg.toCity || leg.to;
       return {
         word: "In the air",
-        line: `Andy is flying from ${from} to ${to}, landing ${fmtTime(leg.arrive)}.`,
+        line: `Babe-a is flying from ${from} to ${to}, landing ${fmtTime(leg.arrive)}.`,
       };
     }
   }
@@ -896,7 +946,7 @@ function liveSummary(s, now) {
   if (past.length === 0) {
     return {
       word: "Trip ahead",
-      line: `Andy leaves ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
+      line: `Babe-a leaves ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
     };
   }
 
@@ -905,14 +955,14 @@ function liveSummary(s, now) {
 
   // Landed at home with nothing else on the books: the trip is actually over.
   if (!next && lastLanded.to === HOME_AIRPORT) {
-    return { word: "Back home", line: "Andy is back home now." };
+    return { word: "Back home", line: "Babe-a is back home now." };
   }
 
   // No more legs in hand yet. He's not home, so it's an overnight, not "back home."
   if (!next) {
     return {
       word: "Overnight",
-      line: `Andy is in ${place} on the overnight.`,
+      line: `Babe-a is in ${place} on the overnight.`,
     };
   }
 
@@ -920,14 +970,14 @@ function liveSummary(s, now) {
   if (dayLabel(next.date, now) === "Today") {
     return {
       word: "On the ground",
-      line: `Andy is in ${place} right now. Next flight in ${humanizeDuration(legDates(next).dep - now)}.`,
+      line: `Babe-a is in ${place} right now. Next flight in ${humanizeDuration(legDates(next).dep - now)}.`,
     };
   }
 
   // Last leg of the day is down; the next one isn't until a later day.
   return {
     word: "Overnight",
-    line: `Andy is in ${place} on the overnight. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
+    line: `Babe-a is in ${place} on the overnight. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
   };
 }
 
@@ -1215,6 +1265,10 @@ export default function App() {
           />
         )}
       </div>
+      <footer className="cs-credit">
+        Created &amp; developed with <span className="cs-heart">♥</span> by Andrew
+        · © {new Date().getFullYear()}
+      </footer>
     </div>
   );
 }
@@ -1238,7 +1292,7 @@ function Gate({ resolve }) {
     <div className="cs-gate">
       <div className="cs-eyebrow">Private access</div>
       <h1>
-        Where's <em>Andy</em>?
+        Where's <em>Babe-a</em>?
       </h1>
       <p>Enter your access code to see his status.</p>
       <div className="cs-field">
@@ -1302,7 +1356,7 @@ function Viewer({ trip, now, onLock }) {
 
   const [weather, setWeather] = useState({});
 
-  // Current weather where Andy is now and everywhere he's still heading, keyed
+  // Current weather where Babe-a is now and everywhere he's still heading, keyed
   // by airport code. "Now" is the most recent leg that has already landed (so
   // his weather stays put through a long overnight), plus every upcoming
   // destination. De-duped, so a multi-leg day only weighs in once per city.
@@ -1352,12 +1406,12 @@ function Viewer({ trip, now, onLock }) {
         <div className="cs-status">
           <div className="word">Home</div>
           <div className="sub">
-            Andy is home right now. This updates when his next trip is posted.
+            Babe-a is home right now. This updates when his next trip is posted.
           </div>
         </div>
         <div className="cs-rule" />
         <div className="cs-foot">
-          <span>SLC · ANDY</span>
+          <span>SLC · BABE-A</span>
           <span className="cs-link" onClick={onLock}>
             Lock
           </span>
@@ -1387,12 +1441,30 @@ function Viewer({ trip, now, onLock }) {
 
       {note && (
         <div className="cs-note">
-          <div className="label">A note from Andy</div>
+          <div className="label">A note from Babe-a</div>
           <div className="body">{note}</div>
         </div>
       )}
 
       <div className="cs-rule" />
+
+      <div className="cs-help">
+        <div className="cs-help-title">How to read this</div>
+        <ul>
+          <li>
+            Tap any <strong>flight number</strong> to follow it live on
+            FlightAware.
+          </li>
+          <li>
+            The <strong>highlighted red card</strong> is the flight in the air
+            right now.
+          </li>
+          <li>
+            Times are local to each airport, with Salt Lake (MT) time and the
+            weather shown underneath.
+          </li>
+        </ul>
+      </div>
 
       {(() => {
         // Group the sorted legs by their departure date.
@@ -1564,7 +1636,7 @@ function Viewer({ trip, now, onLock }) {
       })()}
 
       <div className="cs-foot">
-        <span>SLC · ANDY</span>
+        <span>SLC · BABE-A</span>
         <span className="cs-link" onClick={onLock}>
           Lock
         </span>
