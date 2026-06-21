@@ -31,6 +31,46 @@ const css = `
   overflow-x: hidden;
 }
 
+/* ---- dark theme ---- */
+.cs-root.dark {
+  --ink: #15110e;
+  --surface: #211d19;
+  --surface-2: #2a2521;
+  --line: rgba(244,241,236,0.14);
+  --text: #f4f1ec;
+  --muted: #c2bab0;
+  --faint: #8c857b;
+  --crimson: #ef5564;
+  --crimson-dim: rgba(239,85,100,0.16);
+}
+.cs-root.dark .cs-leg.active { background: rgba(239,85,100,0.12); }
+.cs-root.dark .cs-saved { color: #4cc47e; }
+.cs-root.dark .cs-live.ok { background: rgba(76,196,126,0.12); }
+.cs-root.dark .cs-live.ok .cs-livetag { background: #2e9c5b; }
+
+/* ---- theme toggle ---- */
+.cs-theme-toggle {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: 12px;
+  z-index: 50;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs-theme-toggle:hover { color: var(--crimson); border-color: var(--crimson); }
+.cs-theme-toggle:active { transform: translateY(1px); }
+.cs-theme-toggle svg { display: block; }
+
 .mono { font-family: 'JetBrains Mono', monospace; }
 
 .cs-shell { width: 100%; max-width: 560px; }
@@ -1283,6 +1323,29 @@ export default function App() {
   const [screen, setScreen] = useState("loading"); // loading | gate | viewer | admin
   const [trip, setTrip] = useState(null);
   const [now, setNow] = useState(new Date());
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cs-theme");
+      if (saved === "dark" || saved === "light") return saved;
+    } catch {}
+    return typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  });
+
+  // Persist the theme choice and keep the PWA status-bar color in step.
+  useEffect(() => {
+    try {
+      localStorage.setItem("cs-theme", theme);
+    } catch {}
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "dark" ? "#15110e" : "#f7f5f2");
+  }, [theme]);
+
+  const toggleTheme = () =>
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   // tick so status updates live
   useEffect(() => {
@@ -1361,13 +1424,13 @@ export default function App() {
 
   if (screen === "loading") {
     return (
-      <div className="cs-root">
+      <div className={`cs-root ${theme === "dark" ? "dark" : ""}`}>
         <style>{css}</style>
         <div
           className="cs-shell mono"
           style={{
             marginTop: "20vh",
-            color: "#5f5a56",
+            color: "var(--faint)",
             letterSpacing: "0.2em",
             fontSize: 12,
           }}
@@ -1379,8 +1442,9 @@ export default function App() {
   }
 
   return (
-    <div className="cs-root">
+    <div className={`cs-root ${theme === "dark" ? "dark" : ""}`}>
       <style>{css}</style>
+      <ThemeToggle theme={theme} onToggle={toggleTheme} />
       <div className="cs-shell">
         {screen === "gate" && (
           <Gate
@@ -1491,6 +1555,48 @@ function RouteArrow() {
       <path d="M0 7h24" stroke="currentColor" strokeWidth="1.2" />
       <path d="M20 2l6 5-6 5" stroke="currentColor" strokeWidth="1.2" fill="none" />
     </svg>
+  );
+}
+
+// Sun / moon toggle, fixed to the top-right corner on every screen.
+function ThemeToggle({ theme, onToggle }) {
+  const dark = theme === "dark";
+  return (
+    <button
+      className="cs-theme-toggle"
+      onClick={onToggle}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={dark ? "Light mode" : "Dark mode"}
+    >
+      {dark ? (
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </svg>
+      ) : (
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      )}
+    </button>
   );
 }
 
