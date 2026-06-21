@@ -273,6 +273,7 @@ const css = `
 .cs-wx .cs-wx-label {
   color: var(--faint);
   font-weight: 400;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -389,8 +390,8 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   50% { opacity: 0.3; transform: scale(0.65); }
 }
 
-.cs-route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; }
-.cs-port { }
+.cs-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 14px; }
+.cs-port { min-width: 0; }
 .cs-port.to { text-align: right; }
 .cs-code {
   font-family: 'JetBrains Mono', monospace;
