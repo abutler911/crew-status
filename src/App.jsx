@@ -397,18 +397,44 @@ const css = `
 
 /* ---- credit footer ---- */
 .cs-credit {
+  position: relative;
   width: 100%;
   max-width: 560px;
-  margin-top: 40px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
+  margin-top: 48px;
+  padding-top: 24px;
   text-align: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--faint);
 }
-.cs-credit .cs-heart { color: var(--crimson); }
+.cs-credit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 1px;
+  background: var(--line);
+}
+.cs-credit-line {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 18px;
+  font-style: italic;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.cs-credit-line .cs-heart {
+  color: var(--crimson);
+  font-style: normal;
+  font-size: 15px;
+  margin: 0 2px;
+}
+.cs-credit-year {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-top: 9px;
+}
 
 /* ---- legs ---- */
 .cs-leg {
@@ -1348,8 +1374,11 @@ export default function App() {
         )}
       </div>
       <footer className="cs-credit">
-        Created &amp; developed with <span className="cs-heart">♥</span> by Andrew
-        · © {new Date().getFullYear()}
+        <div className="cs-credit-line">
+          Created &amp; developed with <span className="cs-heart">♥</span> by
+          Andrew
+        </div>
+        <div className="cs-credit-year">© {new Date().getFullYear()} · Crew Status</div>
       </footer>
     </div>
   );
