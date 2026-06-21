@@ -82,6 +82,41 @@ export async function clearTrip() {
   await fetch("/api/trip", { method: "DELETE", headers: authHeaders() });
 }
 
+// Past trips, newest first. Returns [] on any failure.
+export async function getHistory() {
+  try {
+    const res = await fetch("/api/trip?history=1", { headers: authHeaders() });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.history) ? data.history : [];
+  } catch {
+    return [];
+  }
+}
+
+// Personal record: { bethNote, special }. Returns defaults on failure.
+export async function getPersonal() {
+  try {
+    const res = await fetch("/api/personal", { headers: authHeaders() });
+    if (!res.ok) return { bethNote: "", special: null };
+    return await res.json();
+  } catch {
+    return { bethNote: "", special: null };
+  }
+}
+
+// Save personal fields. Beth (view) may set bethNote; admin may also set
+// special ({ date, label } or null).
+export async function savePersonal(fields) {
+  const res = await fetch("/api/personal", {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) throw new Error("save failed (" + res.status + ")");
+  return res.json();
+}
+
 export async function parse(raw) {
   const res = await fetch("/api/parse", {
     method: "POST",
