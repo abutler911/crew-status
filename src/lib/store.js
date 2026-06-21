@@ -92,3 +92,21 @@ export async function parse(raw) {
   const data = await res.json();
   return data.legs;
 }
+
+// Live status for the given legs, keyed by "<flight>|<date>". Returns {} on any
+// failure (or when the server has no AeroAPI key), so the board simply falls
+// back to the printed schedule.
+export async function flightStatus(legs) {
+  try {
+    const res = await fetch("/api/flightstatus", {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ legs }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.statuses || {};
+  } catch {
+    return {};
+  }
+}
