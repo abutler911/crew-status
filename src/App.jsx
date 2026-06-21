@@ -512,6 +512,165 @@ const css = `
   margin-top: 9px;
 }
 
+/* ---- personalization: greeting ---- */
+.cs-greet {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 22px;
+  font-style: italic;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.cs-greet span { color: var(--crimson); font-style: normal; font-weight: 600; }
+
+.cs-homesince {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-top: 12px;
+}
+
+/* special-date countdown */
+.cs-special {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--crimson);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.cs-special-heart { color: var(--crimson); font-size: 16px; }
+.cs-special-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 19px;
+  color: var(--text);
+}
+
+/* a note from Beth */
+.cs-bethnote { margin-top: 30px; }
+.cs-bethnote-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+.cs-bethnote-row { margin-top: 10px; }
+
+/* trip history */
+.cs-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.cs-stat {
+  text-align: center;
+  padding: 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.cs-stat-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--crimson);
+  line-height: 1;
+}
+.cs-stat-l {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-top: 6px;
+}
+.cs-stat-top {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 14px;
+}
+.cs-stat-top strong { color: var(--text); }
+.cs-history-list { display: flex; flex-direction: column; gap: 8px; }
+.cs-htrip {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.cs-htrip > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cs-htrip > summary::-webkit-details-marker { display: none; }
+.cs-htrip-dates {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+.cs-htrip-route {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.cs-htrip-legs {
+  padding: 0 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-htrip-leg {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.cs-htrip-flight { color: var(--crimson); font-weight: 600; min-width: 56px; }
+.cs-htrip-time { color: var(--faint); white-space: nowrap; }
+
+/* accent swatches */
+.cs-accent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.cs-accent-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.cs-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs-swatch.sel { border-color: var(--text); }
+
 /* ---- legs ---- */
 .cs-leg {
   border: 1px solid var(--line);
@@ -1088,6 +1247,109 @@ function homeCountdown(s, now) {
   return { when, sleeps };
 }
 
+// Time-of-day greeting for Beth.
+function greetingWord(now) {
+  const h = now.getHours();
+  if (h < 5) return "Late night";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Good night";
+}
+
+// Warm rotating messages for the home screen, stable across a given day.
+const HOME_MESSAGES = [
+  "He's home — soak up every minute. 🤍",
+  "No flights on the board. Enjoy each other. 🤍",
+  "Grounded and right where he belongs. 🤍",
+  "Home sweet home. Make it count. 🤍",
+  "He's all yours today. 🤍",
+];
+function homeMessage(now) {
+  const start = new Date(now.getFullYear(), 0, 0);
+  const doy = Math.floor((now - start) / 86400000);
+  return HOME_MESSAGES[doy % HOME_MESSAGES.length];
+}
+
+// Whole days from a to b, by calendar day.
+function daysBetween(a, b) {
+  const d1 = new Date(a);
+  d1.setHours(0, 0, 0, 0);
+  const d2 = new Date(b);
+  d2.setHours(0, 0, 0, 0);
+  return Math.round((d2 - d1) / 86400000);
+}
+
+// "today" / "tomorrow" / "in 3 days" for a YYYY-MM-DD date, or null if past.
+function untilWords(dateStr, now) {
+  const n = daysBetween(now, new Date(dateStr + "T00:00:00"));
+  if (n < 0) return null;
+  if (n === 0) return "today";
+  if (n === 1) return "tomorrow";
+  return `in ${n} days`;
+}
+
+// How long Babe-a has been home, from the most recent archived trip.
+function homeSinceText(history, now) {
+  if (!history || history.length === 0) return null;
+  const last = history[0];
+  if (!last.legs || last.legs.length === 0) return null;
+  const arr = last.legs.reduce(
+    (m, l) => Math.max(m, legDates(l).arr.getTime()),
+    0,
+  );
+  if (!arr) return null;
+  const n = daysBetween(arr, now);
+  if (n < 0) return null;
+  if (n === 0) return "Home since today";
+  if (n === 1) return "Home for 1 day";
+  return `Home for ${n} days`;
+}
+
+// Aggregate stats across archived trips.
+function tripStats(history) {
+  let nights = 0;
+  const counts = {};
+  history.forEach((t) => {
+    if (!t.legs || t.legs.length === 0) return;
+    const deps = t.legs.map((l) => legDates(l).dep.getTime());
+    const arrs = t.legs.map((l) => legDates(l).arr.getTime());
+    nights += Math.max(0, Math.round((Math.max(...arrs) - Math.min(...deps)) / 86400000));
+    t.legs.forEach((l) => {
+      if (l.to && l.to !== HOME_AIRPORT) {
+        const k = l.toCity || l.to;
+        counts[k] = (counts[k] || 0) + 1;
+      }
+    });
+  });
+  let top = null;
+  let topN = 0;
+  for (const k in counts) {
+    if (counts[k] > topN) {
+      topN = counts[k];
+      top = k;
+    }
+  }
+  return { trips: history.length, nights, cities: Object.keys(counts).length, top, topN };
+}
+
+// Compact route + dates for a history row.
+function historyTripSummary(t) {
+  const legs = [...t.legs].sort((a, b) => legDates(a).dep - legDates(b).dep);
+  const codes = [];
+  legs.forEach((l, i) => {
+    if (i === 0) codes.push(l.from);
+    codes.push(l.to);
+  });
+  const route = codes.filter((c, i) => i === 0 || c !== codes[i - 1]).join(" → ");
+  return {
+    route,
+    start: legDates(legs[0]).dep,
+    end: legDates(legs[legs.length - 1]).arr,
+    legs,
+  };
+}
+
 // Time spent on the ground between this leg landing and the next one departing.
 // Returns null when there's no following leg. `overnight` is true when the gap
 // crosses a calendar day, so the board can call it out.
@@ -1319,6 +1581,24 @@ function examplePlaceholder() {
 
 // ---- app-------------------------------------------------------------------
 
+// Accent colors Beth can choose. "crimson" is the default brand color; picking
+// it means no override (so dark mode keeps its slightly brighter crimson).
+const ACCENTS = [
+  { id: "crimson", hex: "#be2639" },
+  { id: "rose", hex: "#d6336c" },
+  { id: "plum", hex: "#7c3aed" },
+  { id: "teal", hex: "#0d9488" },
+  { id: "gold", hex: "#bf8700" },
+  { id: "indigo", hex: "#3b5bdb" },
+];
+function hexToRgba(hex, a) {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 export default function App() {
   const [screen, setScreen] = useState("loading"); // loading | gate | viewer | admin
   const [trip, setTrip] = useState(null);
@@ -1346,6 +1626,28 @@ export default function App() {
 
   const toggleTheme = () =>
     setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  const [accent, setAccent] = useState(() => {
+    try {
+      return localStorage.getItem("cs-accent") || "crimson";
+    } catch {
+      return "crimson";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("cs-accent", accent);
+    } catch {}
+  }, [accent]);
+  const accentObj = ACCENTS.find((a) => a.id === accent) || ACCENTS[0];
+  // Default crimson uses no override so dark mode keeps its tuned shade.
+  const rootStyle =
+    accent === "crimson"
+      ? undefined
+      : {
+          "--crimson": accentObj.hex,
+          "--crimson-dim": hexToRgba(accentObj.hex, 0.12),
+        };
 
   // tick so status updates live
   useEffect(() => {
@@ -1442,7 +1744,10 @@ export default function App() {
   }
 
   return (
-    <div className={`cs-root ${theme === "dark" ? "dark" : ""}`}>
+    <div
+      className={`cs-root ${theme === "dark" ? "dark" : ""}`}
+      style={rootStyle}
+    >
       <style>{css}</style>
       <ThemeToggle theme={theme} onToggle={toggleTheme} />
       <div className="cs-shell">
@@ -1491,6 +1796,18 @@ export default function App() {
         )}
       </div>
       <footer className="cs-credit">
+        <div className="cs-accent">
+          <span className="cs-accent-label">Your color</span>
+          {ACCENTS.map((a) => (
+            <button
+              key={a.id}
+              className={`cs-swatch ${a.id === accent ? "sel" : ""}`}
+              style={{ background: a.hex }}
+              onClick={() => setAccent(a.id)}
+              aria-label={`Accent ${a.id}`}
+            />
+          ))}
+        </div>
         <div className="cs-credit-line">
           Created &amp; developed with <span className="cs-heart">♥</span> by
           Andrew
@@ -1729,6 +2046,135 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
   );
 }
 
+// "Good morning, Beth" at the very top of every screen.
+function Greeting({ now }) {
+  return (
+    <div className="cs-greet">
+      {greetingWord(now)}, <span>Beth</span>
+    </div>
+  );
+}
+
+// A countdown to a special shared date that Babe-a sets in the admin.
+function SpecialCountdown({ special, now }) {
+  if (!special || !special.date) return null;
+  const words = untilWords(special.date, now);
+  if (!words) return null;
+  return (
+    <div className="cs-special">
+      <span className="cs-special-heart">♥</span>
+      <span className="cs-special-text">
+        {special.label || "Your day"} {words}
+      </span>
+    </div>
+  );
+}
+
+// Lets Beth leave a short note that Babe-a sees in the admin.
+function BethNote({ initial }) {
+  const [text, setText] = useState(initial || "");
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const dirty = text.trim() !== (initial || "").trim();
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await store.savePersonal({ bethNote: text.trim() });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {}
+    setBusy(false);
+  };
+
+  return (
+    <div className="cs-bethnote">
+      <div className="cs-bethnote-label">Leave a note for Babe-a</div>
+      <textarea
+        className="cs-area"
+        style={{ minHeight: 64 }}
+        placeholder="Fly safe — miss you already. 🤍"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setSaved(false);
+        }}
+      />
+      <div className="cs-bethnote-row">
+        <button
+          className="cs-btn"
+          onClick={save}
+          disabled={busy || !dirty}
+          style={{ padding: "10px 18px" }}
+        >
+          {busy ? "Saving" : saved ? "Sent 🤍" : "Send to Babe-a"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// A collapsible log of past trips with a few warm stats up top.
+function HistoryPanel({ history }) {
+  if (!history || history.length === 0) return null;
+  const stats = tripStats(history);
+  return (
+    <details className="cs-help cs-history">
+      <summary className="cs-help-summary">
+        Past trips
+        <span className="cs-help-chevron" aria-hidden="true">▸</span>
+      </summary>
+      <div className="cs-stats">
+        <div className="cs-stat">
+          <div className="cs-stat-n">{stats.trips}</div>
+          <div className="cs-stat-l">trips</div>
+        </div>
+        <div className="cs-stat">
+          <div className="cs-stat-n">{stats.nights}</div>
+          <div className="cs-stat-l">nights away</div>
+        </div>
+        <div className="cs-stat">
+          <div className="cs-stat-n">{stats.cities}</div>
+          <div className="cs-stat-l">cities</div>
+        </div>
+      </div>
+      {stats.top ? (
+        <div className="cs-stat-top">
+          Most visited · <strong>{stats.top}</strong> ({stats.topN}×)
+        </div>
+      ) : null}
+      <div className="cs-history-list">
+        {history.map((t, i) => {
+          const sum = historyTripSummary(t);
+          return (
+            <details className="cs-htrip" key={i}>
+              <summary>
+                <span className="cs-htrip-dates">
+                  {fmtDate(sum.start)} – {fmtDate(sum.end)}
+                </span>
+                <span className="cs-htrip-route">{sum.route}</span>
+              </summary>
+              <div className="cs-htrip-legs">
+                {sum.legs.map((l, j) => (
+                  <div className="cs-htrip-leg" key={j}>
+                    <span className="cs-htrip-flight">{l.flight}</span>
+                    <span>
+                      {l.from} → {l.to}
+                    </span>
+                    <span className="cs-htrip-time">
+                      {fmtTime(l.depart)}–{fmtTime(l.arrive)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
 function Viewer({ trip, now, onLock }) {
   const s = useMemo(() => tripStatus(trip, now), [trip, now]);
   const [statuses, setStatuses] = useState({});
@@ -1807,17 +2253,45 @@ function Viewer({ trip, now, onLock }) {
     };
   }, [trip]);
 
+  // Personal record (Beth's note + special date) and past-trip history.
+  const [personal, setPersonal] = useState({ bethNote: "", special: null });
+  const [history, setHistory] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [p, h] = await Promise.all([
+        store.getPersonal(),
+        store.getHistory(),
+      ]);
+      if (alive) {
+        setPersonal(p || { bethNote: "", special: null });
+        setHistory(h || []);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [trip]);
+
   if (s.state === "home") {
+    const sinceText = homeSinceText(history, now);
     return (
       <div>
+        <Greeting now={now} />
         <div className="cs-eyebrow">CREW STATUS</div>
         <div className="cs-status">
           <div className="word">Home</div>
-          <div className="sub">
-            Babe-a is home right now. This updates when his next trip is posted.
-          </div>
+          <div className="sub">{homeMessage(now)}</div>
+          {sinceText ? <div className="cs-homesince">{sinceText}</div> : null}
         </div>
+
+        <SpecialCountdown special={personal.special} now={now} />
+
         <div className="cs-rule" />
+
+        <BethNote initial={personal.bethNote} />
+        <HistoryPanel history={history} />
+
         <div className="cs-foot">
           <span>SLC · BABE-A</span>
           <span className="cs-link" onClick={onLock}>
@@ -1845,11 +2319,14 @@ function Viewer({ trip, now, onLock }) {
 
   return (
     <div>
+      <Greeting now={now} />
       <div className="cs-eyebrow">CREW STATUS</div>
       <div className="cs-status">
         <div className="word">{summary.word}</div>
         <div className="sub">{summary.line}</div>
       </div>
+
+      <SpecialCountdown special={personal.special} now={now} />
 
       {flyingLeg && (
         <div className="cs-pinned">
@@ -1966,6 +2443,9 @@ function Viewer({ trip, now, onLock }) {
         });
       })()}
 
+      <BethNote initial={personal.bethNote} />
+      <HistoryPanel history={history} />
+
       <div className="cs-foot">
         <span>SLC · BABE-A</span>
         <span className="cs-link" onClick={onLock}>
@@ -1984,6 +2464,30 @@ function Admin({ trip, onPublish, onExit }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [showManual, setShowManual] = useState(false);
+
+  // Personal: Beth's incoming note, and the special-date countdown Babe-a sets.
+  const [bethNote, setBethNote] = useState("");
+  const [special, setSpecial] = useState({ date: "", label: "" });
+  const [specialMsg, setSpecialMsg] = useState("");
+  useEffect(() => {
+    (async () => {
+      const p = await store.getPersonal();
+      setBethNote(p.bethNote || "");
+      if (p.special) setSpecial({ date: p.special.date || "", label: p.special.label || "" });
+    })();
+  }, []);
+
+  const saveSpecial = async () => {
+    setSpecialMsg("");
+    try {
+      await store.savePersonal({
+        special: special.date ? { date: special.date, label: special.label } : null,
+      });
+      setSpecialMsg(special.date ? "Countdown saved." : "Countdown cleared.");
+    } catch {
+      setSpecialMsg("Could not save the countdown.");
+    }
+  };
   const [draft, setDraft] = useState({
     date: "",
     flight: "",
@@ -2267,6 +2771,37 @@ function Admin({ trip, onPublish, onExit }) {
       </div>
 
       {note && <div className="cs-saved">{note}</div>}
+
+      {bethNote ? (
+        <div className="cs-note" style={{ marginTop: 28 }}>
+          <div className="label">A note from Beth</div>
+          <div className="body">{bethNote}</div>
+        </div>
+      ) : null}
+
+      <div style={{ marginTop: 28 }}>
+        <span className="cs-lab">Countdown for Beth · optional</span>
+        <div className="cs-grid b">
+          <input
+            className="cs-in"
+            type="date"
+            value={special.date}
+            onChange={(e) => setSpecial((s) => ({ ...s, date: e.target.value }))}
+          />
+          <input
+            className="cs-in"
+            placeholder="Anniversary"
+            value={special.label}
+            onChange={(e) => setSpecial((s) => ({ ...s, label: e.target.value }))}
+          />
+        </div>
+        <div className="cs-actions" style={{ marginTop: 12 }}>
+          <button className="cs-btn ghost" onClick={saveSpecial}>
+            Save countdown
+          </button>
+        </div>
+        {specialMsg && <div className="cs-saved">{specialMsg}</div>}
+      </div>
 
       <div className="cs-foot">
         <span />
