@@ -212,37 +212,71 @@ const css = `
 .cs-live {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  background: var(--surface-2);
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  letter-spacing: 0.02em;
-  color: var(--muted);
+  letter-spacing: 0.01em;
 }
-.cs-live .cs-livelabel {
-  font-size: 9px;
+.cs-live .cs-livetag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--faint);
-  border: 1px solid var(--line);
+  color: #fff;
+  padding: 4px 10px;
   border-radius: 999px;
-  padding: 2px 6px;
 }
 .cs-live .cs-livedot2 {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
 }
-.cs-live.ok { color: #1f7a44; }
-.cs-live.warn { color: #b06a00; }
-.cs-live.bad { color: var(--crimson); }
+.cs-live .cs-livetext {
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text);
+}
+.cs-live.ok { background: rgba(31,122,68,0.08); }
+.cs-live.ok .cs-livetag { background: #1f7a44; }
+.cs-live.warn { background: rgba(176,106,0,0.10); }
+.cs-live.warn .cs-livetag { background: #b06a00; }
+.cs-live.bad { background: var(--crimson-dim); }
+.cs-live.bad .cs-livetag { background: var(--crimson); }
 .cs-live.warn .cs-livedot2,
 .cs-live.bad .cs-livedot2 { animation: livepulse 1.4s ease-in-out infinite; }
+
+/* ---- weather at destination ---- */
+.cs-wx {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  max-width: 100%;
+}
+.cs-wx .cs-wx-emoji { font-size: 14px; line-height: 1; }
+.cs-wx .cs-wx-label {
+  color: var(--faint);
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ---- legs ---- */
 .cs-leg {
@@ -1266,6 +1300,40 @@ function Viewer({ trip, now, onLock }) {
     };
   }, [trip]);
 
+  const [weather, setWeather] = useState({});
+
+  // Current weather at the destinations Andy is heading to (or just reached),
+  // keyed by airport code. We skip destinations of legs that landed a while ago
+  // and de-dupe, so a multi-leg day only weighs in once per city.
+  useEffect(() => {
+    const legs = (trip && trip.legs) || [];
+    const lo = Date.now() - 6 * 3600 * 1000;
+    const seen = new Set();
+    const places = [];
+    legs.forEach((l) => {
+      if (legDates(l).arr.getTime() < lo) return;
+      const code = (l.to || "").toUpperCase();
+      if (!code || seen.has(code)) return;
+      seen.add(code);
+      places.push({ code, city: l.toCity || "" });
+    });
+    if (places.length === 0) {
+      setWeather({});
+      return;
+    }
+    let alive = true;
+    const pull = async () => {
+      const res = await store.weather(places);
+      if (alive) setWeather(res || {});
+    };
+    pull();
+    const t = setInterval(pull, 30 * 60000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [trip]);
+
   if (s.state === "home") {
     return (
       <div>
@@ -1436,6 +1504,19 @@ function Viewer({ trip, now, onLock }) {
                             </div>
                           );
                         })()}
+                        {(() => {
+                          const wx = weather[(leg.to || "").toUpperCase()];
+                          if (!wx) return null;
+                          return (
+                            <div className="cs-wx" title={wx.label}>
+                              <span className="cs-wx-emoji">{wx.emoji}</span>
+                              {wx.tempF}°
+                              {wx.label ? (
+                                <span className="cs-wx-label"> {wx.label}</span>
+                              ) : null}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                     {(() => {
@@ -1446,9 +1527,11 @@ function Viewer({ trip, now, onLock }) {
                       if (!live) return null;
                       return (
                         <div className={`cs-live ${live.tone}`}>
-                          <span className="cs-livedot2" />
-                          <span className="cs-livelabel">Live</span>
-                          {live.text}
+                          <span className="cs-livetag">
+                            <span className="cs-livedot2" />
+                            Live
+                          </span>
+                          <span className="cs-livetext">{live.text}</span>
                         </div>
                       );
                     })()}

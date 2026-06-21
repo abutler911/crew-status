@@ -110,3 +110,20 @@ export async function flightStatus(legs) {
     return {};
   }
 }
+
+// Current weather for the given destinations, keyed by airport code. Returns {}
+// on any failure, so the board just shows no weather.
+export async function weather(places) {
+  try {
+    const res = await fetch("/api/weather", {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ places }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.weather || {};
+  } catch {
+    return {};
+  }
+}
