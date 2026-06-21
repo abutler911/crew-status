@@ -279,6 +279,74 @@ const css = `
   text-overflow: ellipsis;
 }
 
+/* ---- redesigned leg card: route / times / weather ---- */
+.cs-route2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.cs-end { min-width: 0; }
+.cs-end.to { text-align: right; }
+.cs-end .cs-city { margin-top: 4px; }
+
+.cs-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+.cs-tcol { min-width: 0; }
+.cs-tcol.to { text-align: right; }
+.cs-tlabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 5px;
+}
+.cs-times .cs-time { margin-top: 0; font-size: 17px; }
+.cs-times .cs-tzhint { margin-top: 3px; }
+
+.cs-wx2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.cs-wx2 .cs-wx-emoji { font-size: 15px; line-height: 1; }
+.cs-wx2 .cs-wx-temp { font-weight: 600; color: var(--text); }
+.cs-wx2 .cs-wx-where { color: var(--faint); }
+
+/* pinned in-air card, hoisted to the top */
+.cs-pinned { margin-top: 20px; }
+.cs-pinned-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  margin-bottom: 10px;
+}
+.cs-leg.pinned {
+  opacity: 1;
+  animation: none;
+  transform: none;
+  margin-bottom: 0;
+}
+
 /* ---- how-to-read helper ---- */
 .cs-help {
   margin-bottom: 22px;
@@ -1335,6 +1403,109 @@ function Gate({ resolve }) {
   );
 }
 
+function RouteArrow() {
+  return (
+    <svg width="30" height="14" viewBox="0 0 30 14" fill="none" aria-hidden="true">
+      <path d="M0 7h24" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M20 2l6 5-6 5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+    </svg>
+  );
+}
+
+// One flight leg, used both pinned at the top and inline in the board. The
+// layout keeps the airport codes on their own row, the times in an aligned
+// two-column row, and weather + live status on their own full-width rows so
+// nothing gets squeezed or truncated.
+function LegCard({ leg, now, statuses, weather, pinned, style }) {
+  const { dep, arr, nextDay } = legDates(leg);
+  const active = now >= dep && now <= arr;
+  const done = now > arr;
+  const live = describeLiveStatus(statuses[legStatusKey(leg)], leg);
+  const wx = weather[(leg.to || "").toUpperCase()];
+  const utahDep = utahDepartTime(leg);
+  const utahArr = utahArriveTime(leg);
+  const tzSuffix = (sh) => (sh > 0 ? " (+1)" : sh < 0 ? " (-1)" : "");
+
+  return (
+    <div
+      className={`cs-leg ${active ? "active" : ""} ${done ? "done" : ""} ${pinned ? "pinned" : ""}`}
+      style={style}
+    >
+      <div className="cs-legtop">
+        <a
+          className="cs-flight"
+          href={flightAwareUrl(leg.flight)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {leg.flight}
+        </a>
+        <span className="cs-tag">
+          {active ? <span className="cs-livedot" /> : null}
+          {active ? "IN AIR NOW" : done ? "LANDED" : "SCHEDULED"}
+        </span>
+      </div>
+
+      <div className="cs-route2">
+        <div className="cs-end">
+          <div className="cs-code">{leg.from}</div>
+          {leg.fromCity ? <div className="cs-city">{leg.fromCity}</div> : null}
+        </div>
+        <div className="cs-arrow">
+          <RouteArrow />
+        </div>
+        <div className="cs-end to">
+          <div className="cs-code">{leg.to}</div>
+          {leg.toCity ? <div className="cs-city">{leg.toCity}</div> : null}
+        </div>
+      </div>
+
+      <div className="cs-times">
+        <div className="cs-tcol">
+          <div className="cs-tlabel">Depart</div>
+          <div className="cs-time">{fmtTime(leg.depart)}</div>
+          {utahDep ? (
+            <div className="cs-tzhint">
+              {utahDep.time} MT{tzSuffix(utahDep.dayShift)}
+            </div>
+          ) : null}
+        </div>
+        <div className="cs-tcol to">
+          <div className="cs-tlabel">Arrive</div>
+          <div className="cs-time">
+            {fmtTime(leg.arrive)}
+            {nextDay ? " +1" : ""}
+          </div>
+          {utahArr ? (
+            <div className="cs-tzhint">
+              {utahArr.time} MT{tzSuffix(utahArr.dayShift)}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {wx ? (
+        <div className="cs-wx2">
+          <span className="cs-wx-emoji">{wx.emoji}</span>
+          <span className="cs-wx-temp">{wx.tempF}°</span>
+          {wx.label ? <span className="cs-wx-cond">{wx.label}</span> : null}
+          <span className="cs-wx-where">in {leg.toCity || leg.to}</span>
+        </div>
+      ) : null}
+
+      {live ? (
+        <div className={`cs-live ${live.tone}`}>
+          <span className="cs-livetag">
+            <span className="cs-livedot2" />
+            Live
+          </span>
+          <span className="cs-livetext">{live.text}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Viewer({ trip, now, onLock }) {
   const s = useMemo(() => tripStatus(trip, now), [trip, now]);
   const [statuses, setStatuses] = useState({});
@@ -1438,6 +1609,15 @@ function Viewer({ trip, now, onLock }) {
   const countdown = homeCountdown(s, now);
   const note = (trip && trip.note ? trip.note : "").trim();
 
+  // The leg in the air right now, hoisted to the top for quick access.
+  const flyingLeg =
+    s.state === "active"
+      ? s.sorted.find((l) => {
+          const { dep, arr } = legDates(l);
+          return now >= dep && now <= arr;
+        })
+      : null;
+
   return (
     <div>
       <div className="cs-eyebrow">CREW STATUS</div>
@@ -1445,6 +1625,22 @@ function Viewer({ trip, now, onLock }) {
         <div className="word">{summary.word}</div>
         <div className="sub">{summary.line}</div>
       </div>
+
+      {flyingLeg && (
+        <div className="cs-pinned">
+          <div className="cs-pinned-label">
+            <span className="cs-livedot" />
+            In the air now
+          </div>
+          <LegCard
+            leg={flyingLeg}
+            now={now}
+            statuses={statuses}
+            weather={weather}
+            pinned
+          />
+        </div>
+      )}
 
       {countdown && (
         <div className="cs-countdown">
@@ -1515,135 +1711,28 @@ function Viewer({ trip, now, onLock }) {
                 <span className="cs-daydate">{head.md}</span>
               </div>
               {g.legs.map((leg, li) => {
-                const { dep, arr, nextDay } = legDates(leg);
-                const isActive =
-                  s.state === "active" && now >= dep && now <= arr;
-                const isDone = now > arr;
                 const i = order++;
-                const lay = layoverAfter(leg, s.sorted[s.sorted.indexOf(leg) + 1]);
+                const lay = layoverAfter(
+                  leg,
+                  s.sorted[s.sorted.indexOf(leg) + 1],
+                );
                 return (
                   <React.Fragment key={`${gi}-${li}`}>
-                  <div
-                    className={`cs-leg ${isActive ? "active" : ""} ${isDone ? "done" : ""}`}
-                    style={{ animationDelay: `${i * 0.06}s` }}
-                  >
-                    <div className="cs-legtop">
-                      <a
-                        className="cs-flight"
-                        href={flightAwareUrl(leg.flight)}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <LegCard
+                      leg={leg}
+                      now={now}
+                      statuses={statuses}
+                      weather={weather}
+                      style={{ animationDelay: `${i * 0.06}s` }}
+                    />
+                    {lay && (
+                      <div
+                        className={`cs-layover ${lay.overnight ? "overnight" : ""}`}
                       >
-                        {leg.flight}
-                      </a>
-                      <span className="cs-tag">
-                        {isActive ? <span className="cs-livedot" /> : null}
-                        {isActive
-                          ? "IN AIR NOW"
-                          : isDone
-                            ? "LANDED"
-                            : "SCHEDULED"}
-                      </span>
-                    </div>
-                    <div className="cs-route">
-                      <div className="cs-port">
-                        <div className="cs-code">{leg.from}</div>
-                        {leg.fromCity ? (
-                          <div className="cs-city">{leg.fromCity}</div>
-                        ) : null}
-                        <div className="cs-time">{fmtTime(leg.depart)}</div>
-                        {(() => {
-                          const utah = utahDepartTime(leg);
-                          if (!utah) return null;
-                          return (
-                            <div className="cs-tzhint">
-                              {utah.time} MT
-                              {utah.dayShift > 0 ? " (+1 day)" : ""}
-                              {utah.dayShift < 0 ? " (-1 day)" : ""}
-                            </div>
-                          );
-                        })()}
+                        {lay.overnight ? "Overnight" : "Layover"} in {lay.place} ·{" "}
+                        {lay.text}
                       </div>
-                      <div className="cs-arrow">
-                        <svg
-                          width="34"
-                          height="14"
-                          viewBox="0 0 34 14"
-                          fill="none"
-                        >
-                          <path
-                            d="M0 7h28"
-                            stroke="currentColor"
-                            strokeWidth="1"
-                          />
-                          <path
-                            d="M24 2l6 5-6 5"
-                            stroke="currentColor"
-                            strokeWidth="1"
-                            fill="none"
-                          />
-                        </svg>
-                      </div>
-                      <div className="cs-port to">
-                        <div className="cs-code">{leg.to}</div>
-                        {leg.toCity ? (
-                          <div className="cs-city">{leg.toCity}</div>
-                        ) : null}
-                        <div className="cs-time">
-                          {fmtTime(leg.arrive)}
-                          {nextDay ? " (next day)" : ""}
-                        </div>
-                        {(() => {
-                          const utah = utahArriveTime(leg);
-                          if (!utah) return null;
-                          return (
-                            <div className="cs-tzhint">
-                              {utah.time} MT
-                              {utah.dayShift > 0 ? " (+1 day)" : ""}
-                              {utah.dayShift < 0 ? " (-1 day)" : ""}
-                            </div>
-                          );
-                        })()}
-                        {(() => {
-                          const wx = weather[(leg.to || "").toUpperCase()];
-                          if (!wx) return null;
-                          return (
-                            <div className="cs-wx" title={wx.label}>
-                              <span className="cs-wx-emoji">{wx.emoji}</span>
-                              {wx.tempF}°
-                              {wx.label ? (
-                                <span className="cs-wx-label"> {wx.label}</span>
-                              ) : null}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    {(() => {
-                      const live = describeLiveStatus(
-                        statuses[legStatusKey(leg)],
-                        leg,
-                      );
-                      if (!live) return null;
-                      return (
-                        <div className={`cs-live ${live.tone}`}>
-                          <span className="cs-livetag">
-                            <span className="cs-livedot2" />
-                            Live
-                          </span>
-                          <span className="cs-livetext">{live.text}</span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  {lay && (
-                    <div
-                      className={`cs-layover ${lay.overnight ? "overnight" : ""}`}
-                    >
-                      {lay.overnight ? "Overnight" : "Layover"} in {lay.place} ·{" "}
-                      {lay.text}
-                    </div>
-                  )}
+                    )}
                   </React.Fragment>
                 );
               })}
