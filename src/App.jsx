@@ -918,6 +918,15 @@ function legStatusKey(leg) {
   return `${leg.flight}|${leg.date}`;
 }
 
+// Has this leg actually landed, per live data? When AeroAPI reports an actual
+// arrival, that's the truth — even if the printed schedule still shows the
+// flight as airborne (e.g. it landed early). Used so the status, the pinned
+// card, and the leg card don't claim "in the air" after a real landing.
+function liveLanded(leg, statuses) {
+  const st = statuses && statuses[legStatusKey(leg)];
+  return !!(st && st.actualIn);
+}
+
 // Formats an ISO instant as a clock time in the given airport's zone.
 function fmtClockTz(iso, tz) {
   if (!iso) return "";
@@ -1064,16 +1073,18 @@ function whenWord(dateStr, now) {
 }
 
 // Plain-language answer to "where is Andy right now?" plus a big status word.
-function liveSummary(s, now) {
+// `statuses` lets live data override the printed schedule (e.g. a flight that
+// landed early shouldn't still read as "in the air").
+function liveSummary(s, now, statuses) {
   if (s.state === "home") {
     return { word: "Home", line: "Babe-a is home right now." };
   }
   const sorted = s.sorted;
 
-  // In the air on a specific leg?
+  // In the air on a specific leg? Only if it hasn't actually landed yet.
   for (const leg of sorted) {
     const { dep, arr } = legDates(leg);
-    if (now >= dep && now <= arr) {
+    if (now >= dep && now <= arr && !liveLanded(leg, statuses)) {
       const from = leg.fromCity || leg.from;
       const to = leg.toCity || leg.to;
       return {
@@ -1083,8 +1094,14 @@ function liveSummary(s, now) {
     }
   }
 
-  const upcoming = sorted.filter((l) => legDates(l).dep > now);
-  const past = sorted.filter((l) => legDates(l).arr <= now);
+  // A leg counts as past once it has actually landed, even if the scheduled
+  // arrival is still in the future.
+  const upcoming = sorted.filter(
+    (l) => legDates(l).dep > now && !liveLanded(l, statuses),
+  );
+  const past = sorted.filter(
+    (l) => legDates(l).arr <= now || liveLanded(l, statuses),
+  );
   const next = upcoming[0];
 
   if (past.length === 0) {
@@ -1483,9 +1500,12 @@ function RouteArrow() {
 // nothing gets squeezed or truncated.
 function LegCard({ leg, now, statuses, weather, pinned, style }) {
   const { dep, arr, nextDay } = legDates(leg);
-  const active = now >= dep && now <= arr;
-  const done = now > arr;
   const st = statuses[legStatusKey(leg)];
+  // Live data wins: if it actually landed, it's not in the air anymore even if
+  // the printed arrival time is still in the future.
+  const landedLive = !!(st && st.actualIn);
+  const active = now >= dep && now <= arr && !landedLive;
+  const done = now > arr || landedLive;
   const live = describeLiveStatus(st, leg);
   const wx = weather[(leg.to || "").toUpperCase()];
   const utahDep = utahDepartTime(leg);
@@ -1702,16 +1722,18 @@ function Viewer({ trip, now, onLock }) {
     );
   }
 
-  const summary = liveSummary(s, now);
+  const summary = liveSummary(s, now, statuses);
   const countdown = homeCountdown(s, now);
   const note = (trip && trip.note ? trip.note : "").trim();
 
-  // The leg in the air right now, hoisted to the top for quick access.
+  // The leg in the air right now, hoisted to the top for quick access. A leg
+  // that has actually landed (per live data) no longer counts, even if its
+  // scheduled arrival is still in the future.
   const flyingLeg =
     s.state === "active"
       ? s.sorted.find((l) => {
           const { dep, arr } = legDates(l);
-          return now >= dep && now <= arr;
+          return now >= dep && now <= arr && !liveLanded(l, statuses);
         })
       : null;
 
