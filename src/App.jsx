@@ -208,6 +208,42 @@ const css = `
 }
 .cs-layover.overnight { color: var(--crimson); }
 
+/* ---- live flight status ---- */
+.cs-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.cs-live .cs-livelabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 6px;
+}
+.cs-live .cs-livedot2 {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.cs-live.ok { color: #1f7a44; }
+.cs-live.warn { color: #b06a00; }
+.cs-live.bad { color: var(--crimson); }
+.cs-live.warn .cs-livedot2,
+.cs-live.bad .cs-livedot2 { animation: livepulse 1.4s ease-in-out infinite; }
+
 /* ---- legs ---- */
 .cs-leg {
   border: 1px solid var(--line);
@@ -647,6 +683,75 @@ function utahArriveTime(leg) {
   const { nextDay } = legDates(leg);
   const dateStr = nextDay ? addDaysStr(leg.date, 1) : leg.date;
   return convertZonedTime(dateStr, leg.arrive, toTz, UTAH_TZ);
+}
+
+// Stable key matching what the flightstatus function returns.
+function legStatusKey(leg) {
+  return `${leg.flight}|${leg.date}`;
+}
+
+// Formats an ISO instant as a clock time in the given airport's zone.
+function fmtClockTz(iso, tz) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleTimeString("en-US", {
+      timeZone: tz || undefined,
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+// Turns a normalized AeroAPI status into a short plain-language line plus a tone
+// ("ok" / "warn" / "bad") the board uses for color. Returns null when there's
+// nothing live to add over the printed schedule.
+function describeLiveStatus(st, leg) {
+  if (!st) return null;
+  const toTz = AIRPORT_TZ[leg.to];
+  const fromTz = AIRPORT_TZ[leg.from];
+  const gateIn = st.gateDestination ? ` · Gate ${st.gateDestination}` : "";
+
+  if (st.cancelled) return { tone: "bad", text: "Canceled" };
+  if (st.diverted) return { tone: "bad", text: "Diverted" };
+
+  // Landed.
+  if (st.actualIn) {
+    const t = fmtClockTz(st.actualIn, toTz);
+    return { tone: "ok", text: t ? `Landed ${t}${gateIn}` : `Landed${gateIn}` };
+  }
+
+  const arrLate = st.arrivalDelay != null ? Math.round(st.arrivalDelay / 60) : null;
+
+  // Departed / airborne.
+  if (st.actualOut) {
+    const eta = st.estIn ? fmtClockTz(st.estIn, toTz) : "";
+    if (arrLate != null && arrLate >= 15) {
+      return {
+        tone: "warn",
+        text: `In the air · landing ${eta ? eta + " " : ""}(${arrLate} min late)${gateIn}`,
+      };
+    }
+    if (arrLate != null && arrLate <= -15) {
+      return { tone: "ok", text: `In the air · landing early${eta ? " ~" + eta : ""}${gateIn}` };
+    }
+    return { tone: "ok", text: eta ? `In the air · landing ~${eta}${gateIn}` : `In the air${gateIn}` };
+  }
+
+  // Not departed yet.
+  const depLate = st.departureDelay != null ? Math.round(st.departureDelay / 60) : null;
+  if (depLate != null && depLate >= 15) {
+    const newOut = st.estOut ? fmtClockTz(st.estOut, fromTz) : "";
+    return {
+      tone: "warn",
+      text: `Delayed ${depLate} min${newOut ? ` · now ${newOut}` : ""}`,
+    };
+  }
+  if (st.actualOut == null && (depLate == null || depLate < 15)) {
+    return { tone: "ok", text: "On time" };
+  }
+  return null;
 }
 
 // Returns "Today" / "Tomorrow" / "Yesterday" for a YYYY-MM-DD date, else null.
@@ -1130,6 +1235,36 @@ function Gate({ resolve }) {
 
 function Viewer({ trip, now, onLock }) {
   const s = useMemo(() => tripStatus(trip, now), [trip, now]);
+  const [statuses, setStatuses] = useState({});
+
+  // Pull live flight status for legs in a tight window around now (recently
+  // departed through the next day or so), so the board can show real delays and
+  // landings. Server-side caching keeps it cheap; legs far in the past or future
+  // are skipped to avoid spending lookups on flights nobody's watching yet.
+  useEffect(() => {
+    const legs = (trip && trip.legs) || [];
+    const lo = Date.now() - 4 * 3600 * 1000;
+    const hi = Date.now() + 26 * 3600 * 1000;
+    const relevant = legs.filter((l) => {
+      const { dep, arr } = legDates(l);
+      return arr.getTime() >= lo && dep.getTime() <= hi;
+    });
+    if (relevant.length === 0) {
+      setStatuses({});
+      return;
+    }
+    let alive = true;
+    const pull = async () => {
+      const res = await store.flightStatus(relevant);
+      if (alive) setStatuses(res || {});
+    };
+    pull();
+    const t = setInterval(pull, 120000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [trip]);
 
   if (s.state === "home") {
     return (
@@ -1303,6 +1438,20 @@ function Viewer({ trip, now, onLock }) {
                         })()}
                       </div>
                     </div>
+                    {(() => {
+                      const live = describeLiveStatus(
+                        statuses[legStatusKey(leg)],
+                        leg,
+                      );
+                      if (!live) return null;
+                      return (
+                        <div className={`cs-live ${live.tone}`}>
+                          <span className="cs-livedot2" />
+                          <span className="cs-livelabel">Live</span>
+                          {live.text}
+                        </div>
+                      );
+                    })()}
                   </div>
                   {lay && (
                     <div
