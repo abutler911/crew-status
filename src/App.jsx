@@ -212,35 +212,47 @@ const css = `
 .cs-live {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  background: var(--surface-2);
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  letter-spacing: 0.02em;
-  color: var(--muted);
+  letter-spacing: 0.01em;
 }
-.cs-live .cs-livelabel {
-  font-size: 9px;
+.cs-live .cs-livetag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--faint);
-  border: 1px solid var(--line);
+  color: #fff;
+  padding: 4px 10px;
   border-radius: 999px;
-  padding: 2px 6px;
 }
 .cs-live .cs-livedot2 {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
 }
-.cs-live.ok { color: #1f7a44; }
-.cs-live.warn { color: #b06a00; }
-.cs-live.bad { color: var(--crimson); }
+.cs-live .cs-livetext {
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text);
+}
+.cs-live.ok { background: rgba(31,122,68,0.08); }
+.cs-live.ok .cs-livetag { background: #1f7a44; }
+.cs-live.warn { background: rgba(176,106,0,0.10); }
+.cs-live.warn .cs-livetag { background: #b06a00; }
+.cs-live.bad { background: var(--crimson-dim); }
+.cs-live.bad .cs-livetag { background: var(--crimson); }
 .cs-live.warn .cs-livedot2,
 .cs-live.bad .cs-livedot2 { animation: livepulse 1.4s ease-in-out infinite; }
 
@@ -1446,9 +1458,11 @@ function Viewer({ trip, now, onLock }) {
                       if (!live) return null;
                       return (
                         <div className={`cs-live ${live.tone}`}>
-                          <span className="cs-livedot2" />
-                          <span className="cs-livelabel">Live</span>
-                          {live.text}
+                          <span className="cs-livetag">
+                            <span className="cs-livedot2" />
+                            Live
+                          </span>
+                          <span className="cs-livetext">{live.text}</span>
                         </div>
                       );
                     })()}
