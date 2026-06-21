@@ -273,6 +273,7 @@ const css = `
 .cs-wx .cs-wx-label {
   color: var(--faint);
   font-weight: 400;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -286,14 +287,27 @@ const css = `
   border-radius: 10px;
   background: var(--surface-2);
 }
-.cs-help-title {
+.cs-help-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--faint);
-  margin-bottom: 9px;
 }
+.cs-help-summary::-webkit-details-marker { display: none; }
+.cs-help-chevron {
+  color: var(--crimson);
+  font-size: 12px;
+  transition: transform 0.18s ease;
+}
+.cs-help[open] .cs-help-chevron { transform: rotate(90deg); }
+.cs-help[open] .cs-help-summary { margin-bottom: 11px; }
 .cs-help ul { list-style: none; margin: 0; padding: 0; }
 .cs-help li {
   position: relative;
@@ -389,8 +403,8 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   50% { opacity: 0.3; transform: scale(0.65); }
 }
 
-.cs-route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; }
-.cs-port { }
+.cs-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 14px; }
+.cs-port { min-width: 0; }
 .cs-port.to { text-align: right; }
 .cs-code {
   font-family: 'JetBrains Mono', monospace;
@@ -1448,8 +1462,11 @@ function Viewer({ trip, now, onLock }) {
 
       <div className="cs-rule" />
 
-      <div className="cs-help">
-        <div className="cs-help-title">How to read this</div>
+      <details className="cs-help">
+        <summary className="cs-help-summary">
+          How to read this
+          <span className="cs-help-chevron" aria-hidden="true">▸</span>
+        </summary>
         <ul>
           <li>
             Tap any <strong>flight number</strong> to follow it live on
@@ -1464,7 +1481,7 @@ function Viewer({ trip, now, onLock }) {
             weather shown underneath.
           </li>
         </ul>
-      </div>
+      </details>
 
       {(() => {
         // Group the sorted legs by their departure date.
