@@ -134,6 +134,80 @@ const css = `
 }
 .cs-rule { height: 1px; background: var(--line); margin: 30px 0; }
 
+/* ---- back-home countdown ---- */
+.cs-countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1.5px solid rgba(190,38,57,0.28);
+  background: rgba(190,38,57,0.06);
+  border-radius: 12px;
+}
+.cs-countdown .when {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--crimson);
+}
+.cs-countdown .sleeps {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  padding: 4px 10px;
+  border: 1.5px solid var(--crimson);
+  border-radius: 999px;
+}
+
+/* ---- note from Andy ---- */
+.cs-note {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--crimson);
+  background: var(--surface);
+  border-radius: 10px;
+}
+.cs-note .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 7px;
+}
+.cs-note .body {
+  font-size: 20px;
+  line-height: 1.4;
+  font-style: italic;
+  color: var(--text);
+}
+
+/* ---- layover between legs ---- */
+.cs-layover {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 14px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+.cs-layover::before {
+  content: '';
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin-left: 11px;
+}
+.cs-layover.overnight { color: var(--crimson); }
+
 /* ---- legs ---- */
 .cs-leg {
   border: 1px solid var(--line);
@@ -555,6 +629,26 @@ function utahDepartTime(leg) {
   return convertZonedTime(leg.date, leg.depart, fromTz, UTAH_TZ);
 }
 
+// "YYYY-MM-DD" plus n days, as another "YYYY-MM-DD" string.
+function addDaysStr(dateStr, n) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// Arrival time of a leg, converted to Utah time, or null if same zone / unknown.
+// Uses the arrival airport's zone, rolling the base date if the leg lands the
+// next day, so the conversion lines up with the real instant.
+function utahArriveTime(leg) {
+  const toTz = AIRPORT_TZ[leg.to];
+  if (!toTz || toTz === UTAH_TZ) return null;
+  const { nextDay } = legDates(leg);
+  const dateStr = nextDay ? addDaysStr(leg.date, 1) : leg.date;
+  return convertZonedTime(dateStr, leg.arrive, toTz, UTAH_TZ);
+}
+
 // Returns "Today" / "Tomorrow" / "Yesterday" for a YYYY-MM-DD date, else null.
 function dayLabel(dateStr, now) {
   if (!dateStr) return null;
@@ -582,6 +676,46 @@ function humanizeDuration(ms) {
   if (h === 0) return `${m} minute${m === 1 ? "" : "s"}`;
   if (m === 0) return `${h} hour${h === 1 ? "" : "s"}`;
   return `${h} hour${h === 1 ? "" : "s"} ${m} minute${m === 1 ? "" : "s"}`;
+}
+
+// Whole nights ("sleeps") between now and a future instant, by calendar day.
+function nightsUntil(target, now) {
+  const a = new Date(now);
+  a.setHours(0, 0, 0, 0);
+  const b = new Date(target);
+  b.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((b - a) / 86400000));
+}
+
+// The "Home Thursday · 2 more sleeps" banner data, or null if there's nothing
+// useful to count down to (already landed, or trip is over).
+function homeCountdown(s, now) {
+  if (!s.sorted || s.sorted.length === 0) return null;
+  const last = s.sorted[s.sorted.length - 1];
+  const homeAt = legDates(last).arr;
+  if (now >= homeAt) return null; // already on that last leg or done
+
+  const endsHome = last.to === HOME_AIRPORT;
+  const when = `${endsHome ? "Home" : "Trip ends"} ${whenWord(last.date, now)} at ${fmtTime(last.arrive)}`;
+  const n = nightsUntil(homeAt, now);
+  const sleeps =
+    n === 0 ? "Later today" : `${n} more sleep${n === 1 ? "" : "s"}`;
+  return { when, sleeps };
+}
+
+// Time spent on the ground between this leg landing and the next one departing.
+// Returns null when there's no following leg. `overnight` is true when the gap
+// crosses a calendar day, so the board can call it out.
+function layoverAfter(leg, next) {
+  if (!next) return null;
+  const land = legDates(leg).arr;
+  const off = legDates(next).dep;
+  const ms = off - land;
+  if (ms <= 0) return null;
+  const place = leg.toCity || leg.to;
+  const overnight =
+    land.toDateString() !== off.toDateString() || ms >= 8 * 3600 * 1000;
+  return { overnight, place, text: humanizeDuration(ms) };
 }
 
 // A casual day word for sentences: "today" / "tomorrow" / "Saturday".
@@ -854,6 +988,24 @@ export default function App() {
     })();
   }, []);
 
+  // Beth's board keeps itself current: re-pull the trip on a timer and whenever
+  // she returns to the tab, so a freshly published trip (or a change mid-trip)
+  // shows up without a manual refresh.
+  useEffect(() => {
+    if (screen !== "viewer") return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") loadTrip();
+    };
+    const t = setInterval(refresh, 60000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [screen]);
+
   if (screen === "loading") {
     return (
       <div className="cs-root">
@@ -998,6 +1150,8 @@ function Viewer({ trip, now, onLock }) {
   }
 
   const summary = liveSummary(s, now);
+  const countdown = homeCountdown(s, now);
+  const note = (trip && trip.note ? trip.note : "").trim();
 
   return (
     <div>
@@ -1006,6 +1160,21 @@ function Viewer({ trip, now, onLock }) {
         <div className="word">{summary.word}</div>
         <div className="sub">{summary.line}</div>
       </div>
+
+      {countdown && (
+        <div className="cs-countdown">
+          <span className="when">{countdown.when}</span>
+          <span className="sleeps">{countdown.sleeps}</span>
+        </div>
+      )}
+
+      {note && (
+        <div className="cs-note">
+          <div className="label">A note from Andy</div>
+          <div className="body">{note}</div>
+        </div>
+      )}
+
       <div className="cs-rule" />
 
       {(() => {
@@ -1045,9 +1214,10 @@ function Viewer({ trip, now, onLock }) {
                   s.state === "active" && now >= dep && now <= arr;
                 const isDone = now > arr;
                 const i = order++;
+                const lay = layoverAfter(leg, s.sorted[s.sorted.indexOf(leg) + 1]);
                 return (
+                  <React.Fragment key={`${gi}-${li}`}>
                   <div
-                    key={`${gi}-${li}`}
                     className={`cs-leg ${isActive ? "active" : ""} ${isDone ? "done" : ""}`}
                     style={{ animationDelay: `${i * 0.06}s` }}
                   >
@@ -1117,9 +1287,29 @@ function Viewer({ trip, now, onLock }) {
                           {fmtTime(leg.arrive)}
                           {nextDay ? " (next day)" : ""}
                         </div>
+                        {(() => {
+                          const utah = utahArriveTime(leg);
+                          if (!utah) return null;
+                          return (
+                            <div className="cs-tzhint">
+                              {utah.time} MT
+                              {utah.dayShift > 0 ? " (+1 day)" : ""}
+                              {utah.dayShift < 0 ? " (-1 day)" : ""}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
+                  {lay && (
+                    <div
+                      className={`cs-layover ${lay.overnight ? "overnight" : ""}`}
+                    >
+                      {lay.overnight ? "Overnight" : "Layover"} in {lay.place} ·{" "}
+                      {lay.text}
+                    </div>
+                  )}
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -1140,6 +1330,7 @@ function Viewer({ trip, now, onLock }) {
 function Admin({ trip, onPublish, onExit }) {
   const [raw, setRaw] = useState("");
   const [legs, setLegs] = useState(trip?.legs ? [...trip.legs] : []);
+  const [noteText, setNoteText] = useState(trip?.note || "");
   const [parsing, setParsing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -1208,7 +1399,7 @@ function Admin({ trip, onPublish, onExit }) {
 
   const publish = async () => {
     setBusy(true);
-    const t = { legs, updatedAt: new Date().toISOString() };
+    const t = { legs, note: noteText.trim(), updatedAt: new Date().toISOString() };
     try {
       await store.saveTrip(t);
       await onPublish(t);
@@ -1234,12 +1425,13 @@ function Admin({ trip, onPublish, onExit }) {
 
   const clearBoard = async () => {
     setBusy(true);
-    const t = { legs: [], updatedAt: new Date().toISOString() };
+    const t = { legs: [], note: "", updatedAt: new Date().toISOString() };
     try {
       await store.saveTrip(t);
       await onPublish(t);
       setLegs([]);
       setRaw("");
+      setNoteText("");
       setNote("Board cleared. Shows as Home.");
     } catch {
       setNote("Could not save. Try again.");
@@ -1400,6 +1592,17 @@ function Admin({ trip, onPublish, onExit }) {
           </div>
         </div>
       )}
+
+      <div style={{ marginTop: 26 }}>
+        <span className="cs-lab">Note for Beth · optional</span>
+        <textarea
+          className="cs-area"
+          style={{ minHeight: 70 }}
+          placeholder="e.g. Long day — I'll call you when I land in Atlanta."
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+        />
+      </div>
 
       <div className="cs-actions">
         <button
