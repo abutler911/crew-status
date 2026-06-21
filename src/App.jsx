@@ -256,6 +256,28 @@ const css = `
 .cs-live.warn .cs-livedot2,
 .cs-live.bad .cs-livedot2 { animation: livepulse 1.4s ease-in-out infinite; }
 
+/* ---- weather at destination ---- */
+.cs-wx {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  max-width: 100%;
+}
+.cs-wx .cs-wx-emoji { font-size: 14px; line-height: 1; }
+.cs-wx .cs-wx-label {
+  color: var(--faint);
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- legs ---- */
 .cs-leg {
   border: 1px solid var(--line);
@@ -1278,6 +1300,40 @@ function Viewer({ trip, now, onLock }) {
     };
   }, [trip]);
 
+  const [weather, setWeather] = useState({});
+
+  // Current weather at the destinations Andy is heading to (or just reached),
+  // keyed by airport code. We skip destinations of legs that landed a while ago
+  // and de-dupe, so a multi-leg day only weighs in once per city.
+  useEffect(() => {
+    const legs = (trip && trip.legs) || [];
+    const lo = Date.now() - 6 * 3600 * 1000;
+    const seen = new Set();
+    const places = [];
+    legs.forEach((l) => {
+      if (legDates(l).arr.getTime() < lo) return;
+      const code = (l.to || "").toUpperCase();
+      if (!code || seen.has(code)) return;
+      seen.add(code);
+      places.push({ code, city: l.toCity || "" });
+    });
+    if (places.length === 0) {
+      setWeather({});
+      return;
+    }
+    let alive = true;
+    const pull = async () => {
+      const res = await store.weather(places);
+      if (alive) setWeather(res || {});
+    };
+    pull();
+    const t = setInterval(pull, 30 * 60000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [trip]);
+
   if (s.state === "home") {
     return (
       <div>
@@ -1445,6 +1501,19 @@ function Viewer({ trip, now, onLock }) {
                               {utah.time} MT
                               {utah.dayShift > 0 ? " (+1 day)" : ""}
                               {utah.dayShift < 0 ? " (-1 day)" : ""}
+                            </div>
+                          );
+                        })()}
+                        {(() => {
+                          const wx = weather[(leg.to || "").toUpperCase()];
+                          if (!wx) return null;
+                          return (
+                            <div className="cs-wx" title={wx.label}>
+                              <span className="cs-wx-emoji">{wx.emoji}</span>
+                              {wx.tempF}°
+                              {wx.label ? (
+                                <span className="cs-wx-label"> {wx.label}</span>
+                              ) : null}
                             </div>
                           );
                         })()}
