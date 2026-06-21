@@ -1302,20 +1302,31 @@ function Viewer({ trip, now, onLock }) {
 
   const [weather, setWeather] = useState({});
 
-  // Current weather at the destinations Andy is heading to (or just reached),
-  // keyed by airport code. We skip destinations of legs that landed a while ago
-  // and de-dupe, so a multi-leg day only weighs in once per city.
+  // Current weather where Andy is now and everywhere he's still heading, keyed
+  // by airport code. "Now" is the most recent leg that has already landed (so
+  // his weather stays put through a long overnight), plus every upcoming
+  // destination. De-duped, so a multi-leg day only weighs in once per city.
   useEffect(() => {
     const legs = (trip && trip.legs) || [];
-    const lo = Date.now() - 6 * 3600 * 1000;
+    const nowMs = Date.now();
+    const sorted = [...legs].sort((a, b) => legDates(a).arr - legDates(b).arr);
     const seen = new Set();
     const places = [];
-    legs.forEach((l) => {
-      if (legDates(l).arr.getTime() < lo) return;
+    const add = (l) => {
       const code = (l.to || "").toUpperCase();
       if (!code || seen.has(code)) return;
       seen.add(code);
       places.push({ code, city: l.toCity || "" });
+    };
+    // Where he is right now: the last leg already on the ground.
+    let current = null;
+    sorted.forEach((l) => {
+      if (legDates(l).arr.getTime() <= nowMs) current = l;
+    });
+    if (current) add(current);
+    // Everywhere he's still flying to.
+    sorted.forEach((l) => {
+      if (legDates(l).arr.getTime() > nowMs) add(l);
     });
     if (places.length === 0) {
       setWeather({});
