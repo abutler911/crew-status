@@ -12,8 +12,10 @@ import { getStore } from "@netlify/blobs";
 
 const GEOCODE = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST = "https://api.open-meteo.com/v1/forecast";
-const WX_TTL_MS = 30 * 60 * 1000; // refresh conditions every 30 min
-const GEO_TTL_MS = 180 * 24 * 3600 * 1000; // coordinates: basically forever
+const WX_TTL_MS = 30 * 60 * 1000; // refresh good conditions every 30 min
+const WX_NEG_TTL_MS = 5 * 60 * 1000; // but retry a failed lookup within 5 min
+const GEO_TTL_MS = 180 * 24 * 3600 * 1000; // good coordinates: basically forever
+const GEO_NEG_TTL_MS = 6 * 3600 * 1000; // retry a failed geocode within hours
 const MAX_PLACES = 12;
 
 // Approximate (metro-level, plenty for weather) coordinates for the airports
@@ -115,7 +117,10 @@ async function geocode(store, code, city) {
   const cacheKey = `geo-${code}`;
   try {
     const cached = await store.get(cacheKey, { type: "json" });
-    if (cached && Date.now() - cached.at < GEO_TTL_MS) return cached.coords;
+    if (cached) {
+      const ttl = cached.coords ? GEO_TTL_MS : GEO_NEG_TTL_MS;
+      if (Date.now() - cached.at < ttl) return cached.coords;
+    }
   } catch {}
   if (!city) return null;
   let coords = null;
@@ -188,9 +193,12 @@ export default async (req) => {
     try {
       cached = await store.get(`wx-${code}`, { type: "json" });
     } catch {}
-    if (cached && Date.now() - cached.at < WX_TTL_MS) {
-      if (cached.data) weather[code] = cached.data;
-      continue;
+    if (cached) {
+      const ttl = cached.data ? WX_TTL_MS : WX_NEG_TTL_MS;
+      if (Date.now() - cached.at < ttl) {
+        if (cached.data) weather[code] = cached.data;
+        continue;
+      }
     }
 
     const known = AIRPORT_COORDS[code];
