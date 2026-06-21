@@ -688,15 +688,18 @@ function nightsUntil(target, now) {
 }
 
 // The "Home Thursday · 2 more sleeps" banner data, or null if there's nothing
-// useful to count down to (already landed, or trip is over).
+// honest to count down to. This is specifically a "when is he home" countdown:
+// if the last posted leg doesn't land at his home airport, the trip isn't
+// actually over — it's just an overnight, with more legs likely still to come —
+// so we show nothing here and let the status line cover it.
 function homeCountdown(s, now) {
   if (!s.sorted || s.sorted.length === 0) return null;
   const last = s.sorted[s.sorted.length - 1];
+  if (last.to !== HOME_AIRPORT) return null;
   const homeAt = legDates(last).arr;
   if (now >= homeAt) return null; // already on that last leg or done
 
-  const endsHome = last.to === HOME_AIRPORT;
-  const when = `${endsHome ? "Home" : "Trip ends"} ${whenWord(last.date, now)} at ${fmtTime(last.arrive)}`;
+  const when = `Home ${whenWord(last.date, now)} at ${fmtTime(last.arrive)}`;
   const n = nightsUntil(homeAt, now);
   const sleeps =
     n === 0 ? "Later today" : `${n} more sleep${n === 1 ? "" : "s"}`;
