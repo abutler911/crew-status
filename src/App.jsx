@@ -940,7 +940,6 @@ function describeLiveStatus(st, leg) {
   const toTz = AIRPORT_TZ[leg.to];
   const fromTz = AIRPORT_TZ[leg.from];
   const gateIn = st.gateDestination ? ` · Gate ${st.gateDestination}` : "";
-  const bagIn = st.baggage ? ` · Bag ${st.baggage}` : "";
 
   if (st.cancelled) return { tone: "bad", text: "Canceled" };
   if (st.diverted) return { tone: "bad", text: "Diverted" };
@@ -948,10 +947,7 @@ function describeLiveStatus(st, leg) {
   // Landed.
   if (st.actualIn) {
     const t = fmtClockTz(st.actualIn, toTz);
-    return {
-      tone: "ok",
-      text: (t ? `Landed ${t}` : "Landed") + gateIn + bagIn,
-    };
+    return { tone: "ok", text: t ? `Landed ${t}${gateIn}` : `Landed${gateIn}` };
   }
 
   const arrLate = st.arrivalDelay != null ? Math.round(st.arrivalDelay / 60) : null;
