@@ -94,6 +94,8 @@ function normalize(f) {
     actualIn: f.actual_in || null,
     gateOrigin: f.gate_origin || null,
     gateDestination: f.gate_destination || null,
+    terminalDestination: f.terminal_destination || null,
+    baggage: f.baggage_claim || null,
     progress: typeof f.progress_percent === "number" ? f.progress_percent : null,
   };
 }

@@ -326,6 +326,42 @@ const css = `
 .cs-wx2 .cs-wx-temp { font-weight: 600; color: var(--text); }
 .cs-wx2 .cs-wx-where { color: var(--faint); }
 
+/* in-air flight progress */
+.cs-prog { margin-top: 18px; }
+.cs-prog-track {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(190,38,57,0.18);
+  margin: 0 6px 10px;
+}
+.cs-prog-fill {
+  position: relative;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--crimson);
+  transition: width 0.6s ease;
+}
+.cs-prog-plane {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  line-height: 1;
+}
+.cs-prog-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+.cs-prog-eta { color: var(--crimson); font-weight: 700; }
+
 /* pinned in-air card, hoisted to the top */
 .cs-pinned { margin-top: 20px; }
 .cs-pinned-label {
@@ -904,6 +940,7 @@ function describeLiveStatus(st, leg) {
   const toTz = AIRPORT_TZ[leg.to];
   const fromTz = AIRPORT_TZ[leg.from];
   const gateIn = st.gateDestination ? ` · Gate ${st.gateDestination}` : "";
+  const bagIn = st.baggage ? ` · Bag ${st.baggage}` : "";
 
   if (st.cancelled) return { tone: "bad", text: "Canceled" };
   if (st.diverted) return { tone: "bad", text: "Diverted" };
@@ -911,7 +948,10 @@ function describeLiveStatus(st, leg) {
   // Landed.
   if (st.actualIn) {
     const t = fmtClockTz(st.actualIn, toTz);
-    return { tone: "ok", text: t ? `Landed ${t}${gateIn}` : `Landed${gateIn}` };
+    return {
+      tone: "ok",
+      text: (t ? `Landed ${t}` : "Landed") + gateIn + bagIn,
+    };
   }
 
   const arrLate = st.arrivalDelay != null ? Math.round(st.arrivalDelay / 60) : null;
@@ -1449,11 +1489,28 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
   const { dep, arr, nextDay } = legDates(leg);
   const active = now >= dep && now <= arr;
   const done = now > arr;
-  const live = describeLiveStatus(statuses[legStatusKey(leg)], leg);
+  const st = statuses[legStatusKey(leg)];
+  const live = describeLiveStatus(st, leg);
   const wx = weather[(leg.to || "").toUpperCase()];
   const utahDep = utahDepartTime(leg);
   const utahArr = utahArriveTime(leg);
   const tzSuffix = (sh) => (sh > 0 ? " (+1)" : sh < 0 ? " (-1)" : "");
+
+  // While in the air: a progress bar and a live "lands in ..." countdown,
+  // using the live ETA when we have it and the schedule otherwise.
+  let progress = null;
+  let etaText = null;
+  if (active) {
+    const landAt = st && st.estIn ? new Date(st.estIn) : arr;
+    const etaMs = landAt - now;
+    etaText =
+      etaMs > 60000 ? `Lands in ${humanizeDuration(etaMs)}` : "Landing now";
+    const pctRaw =
+      st && typeof st.progress === "number"
+        ? st.progress
+        : ((now - dep) / (arr - dep)) * 100;
+    progress = Math.max(3, Math.min(100, Math.round(pctRaw)));
+  }
 
   return (
     <div
@@ -1512,6 +1569,21 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
           ) : null}
         </div>
       </div>
+
+      {active ? (
+        <div className="cs-prog">
+          <div className="cs-prog-track">
+            <div className="cs-prog-fill" style={{ width: `${progress}%` }}>
+              <span className="cs-prog-plane">✈</span>
+            </div>
+          </div>
+          <div className="cs-prog-meta">
+            <span>{leg.from}</span>
+            <span className="cs-prog-eta">{etaText}</span>
+            <span>{leg.to}</span>
+          </div>
+        </div>
+      ) : null}
 
       {wx ? (
         <div className="cs-wx2">
