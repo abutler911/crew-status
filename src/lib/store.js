@@ -82,18 +82,6 @@ export async function clearTrip() {
   await fetch("/api/trip", { method: "DELETE", headers: authHeaders() });
 }
 
-// Past trips, newest first. Returns [] on any failure.
-export async function getHistory() {
-  try {
-    const res = await fetch("/api/trip?history=1", { headers: authHeaders() });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data.history) ? data.history : [];
-  } catch {
-    return [];
-  }
-}
-
 // Personal record: { bethNote, special }. Returns defaults on failure.
 export async function getPersonal() {
   try {

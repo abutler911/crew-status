@@ -522,15 +522,6 @@ const css = `
 }
 .cs-greet span { color: var(--crimson); font-style: normal; font-weight: 600; }
 
-.cs-homesince {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--faint);
-  margin-top: 12px;
-}
-
 /* special-date countdown */
 .cs-special {
   display: flex;
@@ -561,89 +552,6 @@ const css = `
   margin-bottom: 8px;
 }
 .cs-bethnote-row { margin-top: 10px; }
-
-/* trip history */
-.cs-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.cs-stat {
-  text-align: center;
-  padding: 12px 6px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-}
-.cs-stat-n {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--crimson);
-  line-height: 1;
-}
-.cs-stat-l {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--faint);
-  margin-top: 6px;
-}
-.cs-stat-top {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  text-align: center;
-  margin-bottom: 14px;
-}
-.cs-stat-top strong { color: var(--text); }
-.cs-history-list { display: flex; flex-direction: column; gap: 8px; }
-.cs-htrip {
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface);
-  overflow: hidden;
-}
-.cs-htrip > summary {
-  cursor: pointer;
-  list-style: none;
-  padding: 11px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.cs-htrip > summary::-webkit-details-marker { display: none; }
-.cs-htrip-dates {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--faint);
-}
-.cs-htrip-route {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-}
-.cs-htrip-legs {
-  padding: 0 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.cs-htrip-leg {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11.5px;
-  color: var(--muted);
-}
-.cs-htrip-flight { color: var(--crimson); font-weight: 600; min-width: 56px; }
-.cs-htrip-time { color: var(--faint); white-space: nowrap; }
 
 /* accent swatches */
 .cs-accent {
@@ -976,14 +884,6 @@ function legDates(leg) {
   return { dep, arr, nextDay: arr.getDate() !== dep.getDate() };
 }
 
-function fmtDate(d) {
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 // MM/DD/YYYY from a Date or a "YYYY-MM-DD" string.
 function fmtMDY(input) {
   const d = input instanceof Date ? input : new Date(input + "T00:00:00");
@@ -1287,67 +1187,6 @@ function untilWords(dateStr, now) {
   if (n === 0) return "today";
   if (n === 1) return "tomorrow";
   return `in ${n} days`;
-}
-
-// How long Babe-a has been home, from the most recent archived trip.
-function homeSinceText(history, now) {
-  if (!history || history.length === 0) return null;
-  const last = history[0];
-  if (!last.legs || last.legs.length === 0) return null;
-  const arr = last.legs.reduce(
-    (m, l) => Math.max(m, legDates(l).arr.getTime()),
-    0,
-  );
-  if (!arr) return null;
-  const n = daysBetween(arr, now);
-  if (n < 0) return null;
-  if (n === 0) return "Home since today";
-  if (n === 1) return "Home for 1 day";
-  return `Home for ${n} days`;
-}
-
-// Aggregate stats across archived trips.
-function tripStats(history) {
-  let nights = 0;
-  const counts = {};
-  history.forEach((t) => {
-    if (!t.legs || t.legs.length === 0) return;
-    const deps = t.legs.map((l) => legDates(l).dep.getTime());
-    const arrs = t.legs.map((l) => legDates(l).arr.getTime());
-    nights += Math.max(0, Math.round((Math.max(...arrs) - Math.min(...deps)) / 86400000));
-    t.legs.forEach((l) => {
-      if (l.to && l.to !== HOME_AIRPORT) {
-        const k = l.toCity || l.to;
-        counts[k] = (counts[k] || 0) + 1;
-      }
-    });
-  });
-  let top = null;
-  let topN = 0;
-  for (const k in counts) {
-    if (counts[k] > topN) {
-      topN = counts[k];
-      top = k;
-    }
-  }
-  return { trips: history.length, nights, cities: Object.keys(counts).length, top, topN };
-}
-
-// Compact route + dates for a history row.
-function historyTripSummary(t) {
-  const legs = [...t.legs].sort((a, b) => legDates(a).dep - legDates(b).dep);
-  const codes = [];
-  legs.forEach((l, i) => {
-    if (i === 0) codes.push(l.from);
-    codes.push(l.to);
-  });
-  const route = codes.filter((c, i) => i === 0 || c !== codes[i - 1]).join(" → ");
-  return {
-    route,
-    start: legDates(legs[0]).dep,
-    end: legDates(legs[legs.length - 1]).arr,
-    legs,
-  };
 }
 
 // Time spent on the ground between this leg landing and the next one departing.
@@ -2114,67 +1953,6 @@ function BethNote({ initial }) {
   );
 }
 
-// A collapsible log of past trips with a few warm stats up top.
-function HistoryPanel({ history }) {
-  if (!history || history.length === 0) return null;
-  const stats = tripStats(history);
-  return (
-    <details className="cs-help cs-history">
-      <summary className="cs-help-summary">
-        Past trips
-        <span className="cs-help-chevron" aria-hidden="true">▸</span>
-      </summary>
-      <div className="cs-stats">
-        <div className="cs-stat">
-          <div className="cs-stat-n">{stats.trips}</div>
-          <div className="cs-stat-l">trips</div>
-        </div>
-        <div className="cs-stat">
-          <div className="cs-stat-n">{stats.nights}</div>
-          <div className="cs-stat-l">nights away</div>
-        </div>
-        <div className="cs-stat">
-          <div className="cs-stat-n">{stats.cities}</div>
-          <div className="cs-stat-l">cities</div>
-        </div>
-      </div>
-      {stats.top ? (
-        <div className="cs-stat-top">
-          Most visited · <strong>{stats.top}</strong> ({stats.topN}×)
-        </div>
-      ) : null}
-      <div className="cs-history-list">
-        {history.map((t, i) => {
-          const sum = historyTripSummary(t);
-          return (
-            <details className="cs-htrip" key={i}>
-              <summary>
-                <span className="cs-htrip-dates">
-                  {fmtDate(sum.start)} – {fmtDate(sum.end)}
-                </span>
-                <span className="cs-htrip-route">{sum.route}</span>
-              </summary>
-              <div className="cs-htrip-legs">
-                {sum.legs.map((l, j) => (
-                  <div className="cs-htrip-leg" key={j}>
-                    <span className="cs-htrip-flight">{l.flight}</span>
-                    <span>
-                      {l.from} → {l.to}
-                    </span>
-                    <span className="cs-htrip-time">
-                      {fmtTime(l.depart)}–{fmtTime(l.arrive)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          );
-        })}
-      </div>
-    </details>
-  );
-}
-
 function Viewer({ trip, now, onLock }) {
   const s = useMemo(() => tripStatus(trip, now), [trip, now]);
   const [statuses, setStatuses] = useState({});
@@ -2253,20 +2031,13 @@ function Viewer({ trip, now, onLock }) {
     };
   }, [trip]);
 
-  // Personal record (Beth's note + special date) and past-trip history.
+  // Personal record: Beth's note + special date.
   const [personal, setPersonal] = useState({ bethNote: "", special: null });
-  const [history, setHistory] = useState([]);
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [p, h] = await Promise.all([
-        store.getPersonal(),
-        store.getHistory(),
-      ]);
-      if (alive) {
-        setPersonal(p || { bethNote: "", special: null });
-        setHistory(h || []);
-      }
+      const p = await store.getPersonal();
+      if (alive) setPersonal(p || { bethNote: "", special: null });
     })();
     return () => {
       alive = false;
@@ -2274,7 +2045,6 @@ function Viewer({ trip, now, onLock }) {
   }, [trip]);
 
   if (s.state === "home") {
-    const sinceText = homeSinceText(history, now);
     return (
       <div>
         <Greeting now={now} />
@@ -2282,7 +2052,6 @@ function Viewer({ trip, now, onLock }) {
         <div className="cs-status">
           <div className="word">Home</div>
           <div className="sub">{homeMessage(now)}</div>
-          {sinceText ? <div className="cs-homesince">{sinceText}</div> : null}
         </div>
 
         <SpecialCountdown special={personal.special} now={now} />
@@ -2290,7 +2059,6 @@ function Viewer({ trip, now, onLock }) {
         <div className="cs-rule" />
 
         <BethNote initial={personal.bethNote} />
-        <HistoryPanel history={history} />
 
         <div className="cs-foot">
           <span>SLC · BABE-A</span>
@@ -2444,7 +2212,6 @@ function Viewer({ trip, now, onLock }) {
       })()}
 
       <BethNote initial={personal.bethNote} />
-      <HistoryPanel history={history} />
 
       <div className="cs-foot">
         <span>SLC · BABE-A</span>
