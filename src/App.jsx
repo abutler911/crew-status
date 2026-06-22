@@ -2048,7 +2048,7 @@ function Viewer({ trip, now, onLock }) {
     return (
       <div>
         <Greeting now={now} />
-        <div className="cs-eyebrow">CREW STATUS</div>
+        <div className="cs-eyebrow">BABE-A'S STATUS</div>
         <div className="cs-status">
           <div className="word">Home</div>
           <div className="sub">{homeMessage(now)}</div>
@@ -2061,7 +2061,7 @@ function Viewer({ trip, now, onLock }) {
         <BethNote initial={personal.bethNote} />
 
         <div className="cs-foot">
-          <span>SLC · BABE-A</span>
+          <span />
           <span className="cs-link" onClick={onLock}>
             Lock
           </span>
@@ -2088,7 +2088,7 @@ function Viewer({ trip, now, onLock }) {
   return (
     <div>
       <Greeting now={now} />
-      <div className="cs-eyebrow">CREW STATUS</div>
+      <div className="cs-eyebrow">BABE-A'S STATUS</div>
       <div className="cs-status">
         <div className="word">{summary.word}</div>
         <div className="sub">{summary.line}</div>
@@ -2214,7 +2214,7 @@ function Viewer({ trip, now, onLock }) {
       <BethNote initial={personal.bethNote} />
 
       <div className="cs-foot">
-        <span>SLC · BABE-A</span>
+        <span />
         <span className="cs-link" onClick={onLock}>
           Lock
         </span>
