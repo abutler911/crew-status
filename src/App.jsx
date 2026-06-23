@@ -1493,15 +1493,14 @@ export default function App() {
   const [trip, setTrip] = useState(null);
   const [now, setNow] = useState(new Date());
   const [theme, setTheme] = useState(() => {
+    // Default to light on a fresh install/open; only honor a previously saved
+    // choice. We intentionally ignore the OS prefers-color-scheme so the first
+    // run is always light, and a deliberate switch to dark is what sticks.
     try {
       const saved = localStorage.getItem("cs-theme");
       if (saved === "dark" || saved === "light") return saved;
     } catch {}
-    return typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    return "light";
   });
 
   // Persist the theme choice and keep the PWA status-bar color in step.
