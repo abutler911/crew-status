@@ -1851,7 +1851,7 @@ export default function App() {
           Andrew
         </div>
         <div className="cs-credit-year">
-          © {new Date().getFullYear()} · Crew Status
+          © {new Date().getFullYear()} · Mr. Gray Enterprises, Inc.
         </div>
       </footer>
     </div>
