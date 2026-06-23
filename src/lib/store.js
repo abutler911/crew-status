@@ -134,6 +134,40 @@ export async function flightStatus(legs) {
   }
 }
 
+// Whether the server has web-push configured, and the VAPID public key the
+// browser needs to subscribe. Returns { configured:false } on any failure.
+export async function pushConfig() {
+  try {
+    const res = await fetch("/api/push", { headers: authHeaders() });
+    if (!res.ok) return { configured: false, publicKey: "" };
+    return await res.json();
+  } catch {
+    return { configured: false, publicKey: "" };
+  }
+}
+
+// Register this device's push subscription with the server.
+export async function pushSubscribe(subscription) {
+  const res = await fetch("/api/push", {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ action: "subscribe", subscription }),
+  });
+  if (!res.ok) throw new Error("subscribe failed (" + res.status + ")");
+  return res.json();
+}
+
+// Forget this device's push subscription on the server.
+export async function pushUnsubscribe(endpoint) {
+  try {
+    await fetch("/api/push", {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ action: "unsubscribe", endpoint }),
+    });
+  } catch {}
+}
+
 // Current weather for the given destinations, keyed by airport code. Returns {}
 // on any failure, so the board just shows no weather.
 export async function weather(places) {
