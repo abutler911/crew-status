@@ -157,62 +157,80 @@ const css = `
   letter-spacing: 0.04em;
 }
 
-/* ---- status header ---- */
-.cs-status { margin-bottom: 4px; }
-.cs-status .word {
-  font-size: 60px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.015em;
+/* ---- status card ---- */
+/* One quiet object at the top instead of a stack of competing boxes: the
+   headline status, a one-line answer, and small meta chips for the things
+   Beth glances for (when he's home, any shared date). */
+.cs-card {
+  margin-top: 4px;
+  padding: 24px 24px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
 }
-.cs-status .sub {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 22px;
-  line-height: 1.35;
-  letter-spacing: 0;
+.cs-card-word {
+  font-size: 48px;
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
   color: var(--text);
-  margin-top: 12px;
+}
+.cs-card-sub {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.cs-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.cs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 17px;
+  line-height: 1.2;
+  color: var(--text);
+}
+.cs-chip-home { background: var(--crimson-dim); }
+.cs-chip-icon { color: var(--crimson); font-size: 15px; }
+.cs-chip-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  padding: 3px 8px;
+  border: 1px solid var(--crimson);
+  border-radius: 999px;
 }
 .cs-rule { height: 1px; background: var(--line); margin: 30px 0; }
 
-/* ---- back-home countdown ---- */
-.cs-countdown {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 18px;
-  padding: 14px 18px;
-  border: 1.5px solid rgba(190,38,57,0.28);
-  background: rgba(190,38,57,0.06);
-  border-radius: 12px;
-}
-.cs-countdown .when {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.1;
-  color: var(--crimson);
-}
-.cs-countdown .sleeps {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--crimson);
-  padding: 4px 10px;
-  border: 1.5px solid var(--crimson);
-  border-radius: 999px;
-}
-
-/* ---- note from Andy ---- */
+/* ---- note from Babe-a ---- */
+/* A handwritten aside, not another bordered card — just a crimson margin
+   rule and the words. */
 .cs-note {
-  margin-top: 18px;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
+  margin-top: 22px;
+  padding-left: 16px;
   border-left: 3px solid var(--crimson);
-  background: var(--surface);
-  border-radius: 10px;
+}
+.cs-note .body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 23px;
+  line-height: 1.4;
+  font-style: italic;
+  color: var(--text);
 }
 .cs-note .label {
   font-family: 'JetBrains Mono', monospace;
@@ -220,13 +238,7 @@ const css = `
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--faint);
-  margin-bottom: 7px;
-}
-.cs-note .body {
-  font-size: 20px;
-  line-height: 1.4;
-  font-style: italic;
-  color: var(--text);
+  margin-top: 9px;
 }
 
 /* ---- layover between legs ---- */
@@ -522,25 +534,6 @@ const css = `
   margin-bottom: 14px;
 }
 .cs-greet span { color: var(--crimson); font-style: normal; font-weight: 600; }
-
-/* special-date countdown */
-.cs-special {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 18px;
-  padding: 13px 16px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--crimson);
-  border-radius: 10px;
-  background: var(--surface);
-}
-.cs-special-heart { color: var(--crimson); font-size: 16px; }
-.cs-special-text {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 19px;
-  color: var(--text);
-}
 
 /* a note from Beth */
 .cs-bethnote { margin-top: 30px; }
@@ -967,7 +960,8 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 @media (max-width: 480px) {
   .cs-gate h1 { font-size: 42px; }
   .cs-gate { margin-top: 10vh; }
-  .cs-status .word { font-size: 44px; }
+  .cs-card { padding: 20px 18px; }
+  .cs-card-word { font-size: 38px; }
   .cs-dayhead { font-size: 25px; }
   .cs-dayhead .cs-daydate { font-size: 20px; }
   .cs-grid, .cs-grid.b { grid-template-columns: 1fr 1fr; }
@@ -2207,17 +2201,41 @@ function Greeting({ now }) {
   );
 }
 
-// A countdown to a special shared date that Babe-a sets in the admin.
-function SpecialCountdown({ special, now }) {
-  if (!special || !special.date) return null;
-  const words = untilWords(special.date, now);
-  if (!words) return null;
+// The single status card at the top of every screen: the big headline word,
+// a one-line plain-language answer, and a meta row of small chips for the
+// at-a-glance facts — when he's home again, and any special shared date
+// Babe-a set in the admin. Chips are omitted when there's nothing to show.
+function StatusCard({ word, sub, countdown, special, now }) {
+  const specialWords =
+    special && special.date ? untilWords(special.date, now) : null;
+  const hasMeta = countdown || specialWords;
   return (
-    <div className="cs-special">
-      <span className="cs-special-heart">♥</span>
-      <span className="cs-special-text">
-        {special.label || "Your day"} {words}
-      </span>
+    <div className="cs-card">
+      <div className="cs-card-word">{word}</div>
+      <div className="cs-card-sub">{sub}</div>
+      {hasMeta && (
+        <div className="cs-card-meta">
+          {countdown && (
+            <div className="cs-chip cs-chip-home">
+              <span className="cs-chip-icon" aria-hidden="true">
+                ⌂
+              </span>
+              <span className="cs-chip-text">{countdown.when}</span>
+              <span className="cs-chip-tag">{countdown.sleeps}</span>
+            </div>
+          )}
+          {specialWords && (
+            <div className="cs-chip cs-chip-special">
+              <span className="cs-chip-icon" aria-hidden="true">
+                ♥
+              </span>
+              <span className="cs-chip-text">
+                {(special.label || "Your day") + " " + specialWords}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -2361,13 +2379,12 @@ function Viewer({ trip, now, onLock }) {
     return (
       <div>
         <Greeting now={now} />
-        <div className="cs-eyebrow">BABE-A'S STATUS</div>
-        <div className="cs-status">
-          <div className="word">Home</div>
-          <div className="sub">{homeMessage(now)}</div>
-        </div>
-
-        <SpecialCountdown special={personal.special} now={now} />
+        <StatusCard
+          word="Home"
+          sub={homeMessage(now)}
+          special={personal.special}
+          now={now}
+        />
 
         <div className="cs-rule" />
 
@@ -2401,13 +2418,13 @@ function Viewer({ trip, now, onLock }) {
   return (
     <div>
       <Greeting now={now} />
-      <div className="cs-eyebrow">BABE-A'S STATUS</div>
-      <div className="cs-status">
-        <div className="word">{summary.word}</div>
-        <div className="sub">{summary.line}</div>
-      </div>
-
-      <SpecialCountdown special={personal.special} now={now} />
+      <StatusCard
+        word={summary.word}
+        sub={summary.line}
+        countdown={countdown}
+        special={personal.special}
+        now={now}
+      />
 
       {flyingLeg && (
         <div className="cs-pinned">
@@ -2425,18 +2442,11 @@ function Viewer({ trip, now, onLock }) {
         </div>
       )}
 
-      {countdown && (
-        <div className="cs-countdown">
-          <span className="when">{countdown.when}</span>
-          <span className="sleeps">{countdown.sleeps}</span>
-        </div>
-      )}
-
       {note && (
-        <div className="cs-note">
-          <div className="label">A note from Babe-a</div>
+        <blockquote className="cs-note">
           <div className="body">{note}</div>
-        </div>
+          <div className="label">— a note from Babe-a</div>
+        </blockquote>
       )}
 
       <div className="cs-rule" />
