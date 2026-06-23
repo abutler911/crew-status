@@ -1663,10 +1663,12 @@ export default function App() {
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const [accent, setAccent] = useState(() => {
+    // Default to plum (purple) on a fresh install; a saved choice always wins,
+    // so once Beth picks a color it sticks.
     try {
-      return localStorage.getItem("cs-accent") || "crimson";
+      return localStorage.getItem("cs-accent") || "plum";
     } catch {
-      return "crimson";
+      return "plum";
     }
   });
   useEffect(() => {
