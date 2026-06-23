@@ -601,6 +601,40 @@ const css = `
 .cs-leg.done { opacity: 0.66; }
 .cs-leg.done.flown { animation: none; opacity: 0.66; transform: none; }
 
+/* Deadhead: a leg Babe-a rides as a passenger, not one he operates. Muted,
+   dashed-edge styling so it reads as clearly distinct from his own flights. */
+.cs-leg.deadhead {
+  border-style: dashed;
+  background: var(--surface-2);
+}
+.cs-leg.deadhead .cs-flight { color: var(--muted); }
+.cs-leg.deadhead a.cs-flight { border-bottom-color: rgba(120,120,120,0.4); }
+.cs-dh {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  margin-top: -6px;
+}
+.cs-dh-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.cs-dh-note {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--faint);
+}
+
 .cs-legtop {
   display: flex;
   justify-content: space-between;
@@ -1228,9 +1262,12 @@ function liveSummary(s, now, statuses) {
     if (now >= dep && now <= arr && !liveLanded(leg, statuses)) {
       const from = leg.fromCity || leg.from;
       const to = leg.toCity || leg.to;
+      const verb = isDeadhead(leg)
+        ? "is deadheading (riding as a passenger)"
+        : "is flying";
       return {
         word: "In the air",
-        line: `Babe-a is flying from ${from} to ${to}, landing ${fmtTime(leg.arrive)}.`,
+        line: `Babe-a ${verb} from ${from} to ${to}, landing ${fmtTime(leg.arrive)}.`,
       };
     }
   }
@@ -1323,6 +1360,19 @@ const IATA_TO_ICAO = {
   KE: "KAL",
   VA: "VOZ",
 };
+
+// A deadhead is a leg Babe-a rides as a passenger, not one he operates. The
+// parser marks these by prefixing the flight number with "DH " (see parse.js),
+// so a leading "DH" is our signal across the app.
+function isDeadhead(leg) {
+  return /^DH\b/i.test((leg?.flight || "").trim());
+}
+
+// The flight number with the "DH " deadhead marker removed, for when the badge
+// already says "deadhead" and we don't want the prefix repeated on the number.
+function flightNumber(flight) {
+  return (flight || "").replace(/^DH\s*/i, "").trim();
+}
 
 // Builds a FlightAware link from a flight number. Strips a deadhead "DH" marker
 // and any spaces, then converts the airline code to ICAO (DL2014 -> DAL2014).
@@ -1769,6 +1819,7 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
   const active = now >= dep && now <= arr && !landedLive;
   const done = now > arr || landedLive;
   const live = describeLiveStatus(st, leg);
+  const deadhead = isDeadhead(leg);
   const wx = weather[(leg.to || "").toUpperCase()];
   const utahDep = utahDepartTime(leg);
   const utahArr = utahArriveTime(leg);
@@ -1792,7 +1843,7 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
 
   return (
     <div
-      className={`cs-leg ${active ? "active" : ""} ${done ? "done" : ""} ${pinned ? "pinned" : ""}`}
+      className={`cs-leg ${active ? "active" : ""} ${done ? "done" : ""} ${pinned ? "pinned" : ""} ${deadhead ? "deadhead" : ""}`}
       style={style}
     >
       <div className="cs-legtop">
@@ -1802,13 +1853,20 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {leg.flight}
+          {deadhead ? flightNumber(leg.flight) : leg.flight}
         </a>
         <span className="cs-tag">
           {active ? <span className="cs-livedot" /> : null}
           {active ? "IN AIR NOW" : done ? "LANDED" : "SCHEDULED"}
         </span>
       </div>
+
+      {deadhead ? (
+        <div className="cs-dh">
+          <span className="cs-dh-badge">Deadhead</span>
+          <span className="cs-dh-note">Riding as a passenger — not operating</span>
+        </div>
+      ) : null}
 
       <div className="cs-route2">
         <div className="cs-end">
@@ -2141,6 +2199,10 @@ function Viewer({ trip, now, onLock }) {
           <li>
             The <strong>highlighted red card</strong> is the flight in the air
             right now.
+          </li>
+          <li>
+            A <strong>Deadhead</strong> card (dashed edge) is a leg Babe-a is
+            riding as a passenger — he is not operating that flight.
           </li>
           <li>
             Times are local to each airport, with Salt Lake (MT) time and the
