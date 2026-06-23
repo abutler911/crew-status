@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// Register the push service worker once the page has loaded, so a device that
+// already opted in keeps receiving notifications. Enabling/disabling push is
+// handled in the app's notification toggle.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}

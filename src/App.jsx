@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import * as store from "./lib/store.js";
+import * as push from "./lib/push.js";
 
 // The access codes no longer live here. They are environment variables on the
 // server, and the gate checks them through /api/auth. Nothing secret ships to
@@ -578,6 +579,71 @@ const css = `
   -webkit-tap-highlight-color: transparent;
 }
 .cs-swatch.sel { border-color: var(--text); }
+
+/* notifications opt-in / opt-out */
+.cs-notif {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+}
+.cs-notif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.cs-notif-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+  font-weight: 700;
+}
+.cs-notif-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.35;
+}
+.cs-notif-note {
+  font-size: 12px;
+  color: var(--crimson);
+  margin-top: 10px;
+  line-height: 1.35;
+}
+.cs-switch {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+  background: var(--line);
+  transition: background 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs-switch.on { background: var(--crimson); }
+.cs-switch:disabled { opacity: 0.6; cursor: default; }
+.cs-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.18s ease;
+}
+.cs-switch.on .cs-switch-knob { transform: translateX(18px); }
 
 /* ---- legs ---- */
 .cs-leg {
@@ -1684,6 +1750,7 @@ export default function App() {
         )}
       </div>
       <footer className="cs-credit">
+        {(screen === "viewer" || screen === "admin") && <NotificationToggle />}
         <div className="cs-accent">
           <span className="cs-accent-label">Your color</span>
           {ACCENTS.map((a) => (
@@ -1938,6 +2005,95 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
           <span className="cs-livetext">{live.text}</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// An opt-in / opt-out switch for push notifications (departures, landings, and
+// delays). It only shows when this browser can do push AND the server has push
+// configured, so it stays invisible rather than broken when either is missing.
+// Turning it off unsubscribes this device and tells the server to forget it.
+function NotificationToggle() {
+  const [show, setShow] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  // The VAPID public key, kept around for when the user flips the switch on.
+  const [publicKey, setPublicKey] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!push.pushSupported()) return;
+      const cfg = await store.pushConfig();
+      if (!alive || !cfg.configured || !cfg.publicKey) return;
+      const sub = await push.currentSubscription();
+      if (!alive) return;
+      setPublicKey(cfg.publicKey);
+      setEnabled(!!sub && push.permission() === "granted");
+      setShow(true);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const turnOn = async () => {
+    setBusy(true);
+    setNote("");
+    try {
+      const sub = await push.subscribe(publicKey);
+      await store.pushSubscribe(sub);
+      setEnabled(true);
+    } catch (e) {
+      if (e && e.message === "denied") {
+        setNote("Notifications are blocked. Enable them in your browser settings.");
+      } else {
+        setNote("Could not turn on notifications. Please try again.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const turnOff = async () => {
+    setBusy(true);
+    setNote("");
+    try {
+      const endpoint = await push.unsubscribe();
+      if (endpoint) await store.pushUnsubscribe(endpoint);
+      setEnabled(false);
+    } catch {
+      setNote("Could not turn off notifications. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!show) return null;
+
+  return (
+    <div className="cs-notif">
+      <div className="cs-notif-row">
+        <div className="cs-notif-text">
+          <div className="cs-notif-title">Notifications</div>
+          <div className="cs-notif-sub">
+            Departures, landings &amp; delays for the current trip.
+          </div>
+        </div>
+        <button
+          type="button"
+          className={`cs-switch ${enabled ? "on" : ""}`}
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Push notifications"
+          disabled={busy}
+          onClick={enabled ? turnOff : turnOn}
+        >
+          <span className="cs-switch-knob" />
+        </button>
+      </div>
+      {note ? <div className="cs-notif-note">{note}</div> : null}
     </div>
   );
 }
