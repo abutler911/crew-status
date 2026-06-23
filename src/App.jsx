@@ -1018,45 +1018,114 @@ const UTAH_TZ = "America/Denver";
 // touch. Used to show departure times in Utah time alongside local time.
 const AIRPORT_TZ = {
   // Mountain
-  SLC: UTAH_TZ, DEN: UTAH_TZ, ABQ: UTAH_TZ, COS: UTAH_TZ, BOI: UTAH_TZ,
-  GJT: UTAH_TZ, BZN: UTAH_TZ, JAC: UTAH_TZ,
-  PHX: "America/Phoenix", TUS: "America/Phoenix",
+  SLC: UTAH_TZ,
+  DEN: UTAH_TZ,
+  ABQ: UTAH_TZ,
+  COS: UTAH_TZ,
+  BOI: UTAH_TZ,
+  GJT: UTAH_TZ,
+  BZN: UTAH_TZ,
+  JAC: UTAH_TZ,
+  PHX: "America/Phoenix",
+  TUS: "America/Phoenix",
   // Pacific
-  LAX: "America/Los_Angeles", SFO: "America/Los_Angeles", SAN: "America/Los_Angeles",
-  SJC: "America/Los_Angeles", OAK: "America/Los_Angeles", SMF: "America/Los_Angeles",
-  SNA: "America/Los_Angeles", BUR: "America/Los_Angeles", ONT: "America/Los_Angeles",
-  PDX: "America/Los_Angeles", SEA: "America/Los_Angeles", GEG: "America/Los_Angeles",
-  RNO: "America/Los_Angeles", LAS: "America/Los_Angeles", FAT: "America/Los_Angeles",
+  LAX: "America/Los_Angeles",
+  SFO: "America/Los_Angeles",
+  SAN: "America/Los_Angeles",
+  SJC: "America/Los_Angeles",
+  OAK: "America/Los_Angeles",
+  SMF: "America/Los_Angeles",
+  SNA: "America/Los_Angeles",
+  BUR: "America/Los_Angeles",
+  ONT: "America/Los_Angeles",
+  PDX: "America/Los_Angeles",
+  SEA: "America/Los_Angeles",
+  GEG: "America/Los_Angeles",
+  RNO: "America/Los_Angeles",
+  LAS: "America/Los_Angeles",
+  FAT: "America/Los_Angeles",
   // Alaska / Hawaii
-  ANC: "America/Anchorage", FAI: "America/Anchorage", JNU: "America/Anchorage",
-  HNL: "Pacific/Honolulu", OGG: "Pacific/Honolulu", KOA: "Pacific/Honolulu",
+  ANC: "America/Anchorage",
+  FAI: "America/Anchorage",
+  JNU: "America/Anchorage",
+  HNL: "Pacific/Honolulu",
+  OGG: "Pacific/Honolulu",
+  KOA: "Pacific/Honolulu",
   // Central
-  ORD: "America/Chicago", MDW: "America/Chicago", DFW: "America/Chicago",
-  IAH: "America/Chicago", HOU: "America/Chicago", MSY: "America/Chicago",
-  MSP: "America/Chicago", STL: "America/Chicago", MCI: "America/Chicago",
-  OMA: "America/Chicago", OKC: "America/Chicago", TUL: "America/Chicago",
-  MEM: "America/Chicago", BNA: "America/Chicago", AUS: "America/Chicago",
-  SAT: "America/Chicago", ICT: "America/Chicago", DSM: "America/Chicago",
-  MKE: "America/Chicago", FAR: "America/Chicago", LIT: "America/Chicago",
+  ORD: "America/Chicago",
+  MDW: "America/Chicago",
+  DFW: "America/Chicago",
+  IAH: "America/Chicago",
+  HOU: "America/Chicago",
+  MSY: "America/Chicago",
+  MSP: "America/Chicago",
+  STL: "America/Chicago",
+  MCI: "America/Chicago",
+  OMA: "America/Chicago",
+  OKC: "America/Chicago",
+  TUL: "America/Chicago",
+  MEM: "America/Chicago",
+  BNA: "America/Chicago",
+  AUS: "America/Chicago",
+  SAT: "America/Chicago",
+  ICT: "America/Chicago",
+  DSM: "America/Chicago",
+  MKE: "America/Chicago",
+  FAR: "America/Chicago",
+  LIT: "America/Chicago",
   // Eastern
-  ATL: "America/New_York", BOS: "America/New_York", JFK: "America/New_York",
-  LGA: "America/New_York", EWR: "America/New_York", DCA: "America/New_York",
-  IAD: "America/New_York", BWI: "America/New_York", PHL: "America/New_York",
-  CLT: "America/New_York", RDU: "America/New_York", MCO: "America/New_York",
-  MIA: "America/New_York", FLL: "America/New_York", TPA: "America/New_York",
-  PBI: "America/New_York", JAX: "America/New_York", RSW: "America/New_York",
-  PIT: "America/New_York", CLE: "America/New_York", CMH: "America/New_York",
-  CVG: "America/New_York", IND: "America/New_York", DTW: "America/New_York",
-  BUF: "America/New_York", ROC: "America/New_York", SYR: "America/New_York",
-  BDL: "America/New_York", PVD: "America/New_York", ALB: "America/New_York",
-  ORF: "America/New_York", RIC: "America/New_York", SAV: "America/New_York",
-  CHS: "America/New_York", GSP: "America/New_York", GSO: "America/New_York",
+  ATL: "America/New_York",
+  BOS: "America/New_York",
+  JFK: "America/New_York",
+  LGA: "America/New_York",
+  EWR: "America/New_York",
+  DCA: "America/New_York",
+  IAD: "America/New_York",
+  BWI: "America/New_York",
+  PHL: "America/New_York",
+  CLT: "America/New_York",
+  RDU: "America/New_York",
+  MCO: "America/New_York",
+  MIA: "America/New_York",
+  FLL: "America/New_York",
+  TPA: "America/New_York",
+  PBI: "America/New_York",
+  JAX: "America/New_York",
+  RSW: "America/New_York",
+  PIT: "America/New_York",
+  CLE: "America/New_York",
+  CMH: "America/New_York",
+  CVG: "America/New_York",
+  IND: "America/New_York",
+  DTW: "America/New_York",
+  BUF: "America/New_York",
+  ROC: "America/New_York",
+  SYR: "America/New_York",
+  BDL: "America/New_York",
+  PVD: "America/New_York",
+  ALB: "America/New_York",
+  ORF: "America/New_York",
+  RIC: "America/New_York",
+  SAV: "America/New_York",
+  CHS: "America/New_York",
+  GSP: "America/New_York",
+  GSO: "America/New_York",
   // International (common destinations)
-  YYZ: "America/Toronto", YVR: "America/Vancouver", YUL: "America/Toronto",
-  CUN: "America/Cancun", MEX: "America/Mexico_City",
-  LHR: "Europe/London", CDG: "Europe/Paris", AMS: "Europe/Amsterdam",
-  FRA: "Europe/Berlin", FCO: "Europe/Rome", MAD: "Europe/Madrid",
-  NRT: "Asia/Tokyo", HND: "Asia/Tokyo", ICN: "Asia/Seoul", PVG: "Asia/Shanghai",
+  YYZ: "America/Toronto",
+  YVR: "America/Vancouver",
+  YUL: "America/Toronto",
+  CUN: "America/Cancun",
+  MEX: "America/Mexico_City",
+  LHR: "Europe/London",
+  CDG: "Europe/Paris",
+  AMS: "Europe/Amsterdam",
+  FRA: "Europe/Berlin",
+  FCO: "Europe/Rome",
+  MAD: "Europe/Madrid",
+  NRT: "Asia/Tokyo",
+  HND: "Asia/Tokyo",
+  ICN: "Asia/Seoul",
+  PVG: "Asia/Shanghai",
 };
 
 // Converts a "YYYY-MM-DD" + "HH:MM" wall-clock time in `fromTz` to the
@@ -1069,7 +1138,9 @@ function convertZonedTime(dateStr, hhmm, fromTz, toTz) {
   const asIfUtc = new Date(`${dateStr}T${hhmm}:00Z`);
   const inTz = new Date(asIfUtc.toLocaleString("en-US", { timeZone: fromTz }));
   const inUtc = new Date(asIfUtc.toLocaleString("en-US", { timeZone: "UTC" }));
-  const instant = new Date(asIfUtc.getTime() - (inTz.getTime() - inUtc.getTime()));
+  const instant = new Date(
+    asIfUtc.getTime() - (inTz.getTime() - inUtc.getTime()),
+  );
 
   const time = instant.toLocaleTimeString("en-US", {
     timeZone: toTz,
@@ -1158,7 +1229,8 @@ function describeLiveStatus(st, leg) {
     return { tone: "ok", text: t ? `Landed ${t}${gateIn}` : `Landed${gateIn}` };
   }
 
-  const arrLate = st.arrivalDelay != null ? Math.round(st.arrivalDelay / 60) : null;
+  const arrLate =
+    st.arrivalDelay != null ? Math.round(st.arrivalDelay / 60) : null;
 
   // Departed / airborne.
   if (st.actualOut) {
@@ -1170,13 +1242,22 @@ function describeLiveStatus(st, leg) {
       };
     }
     if (arrLate != null && arrLate <= -15) {
-      return { tone: "ok", text: `In the air · landing early${eta ? " ~" + eta : ""}${gateIn}` };
+      return {
+        tone: "ok",
+        text: `In the air · landing early${eta ? " ~" + eta : ""}${gateIn}`,
+      };
     }
-    return { tone: "ok", text: eta ? `In the air · landing ~${eta}${gateIn}` : `In the air${gateIn}` };
+    return {
+      tone: "ok",
+      text: eta
+        ? `In the air · landing ~${eta}${gateIn}`
+        : `In the air${gateIn}`,
+    };
   }
 
   // Not departed yet.
-  const depLate = st.departureDelay != null ? Math.round(st.departureDelay / 60) : null;
+  const depLate =
+    st.departureDelay != null ? Math.round(st.departureDelay / 60) : null;
   if (depLate != null && depLate >= 15) {
     const newOut = st.estOut ? fmtClockTz(st.estOut, fromTz) : "";
     return {
@@ -1575,11 +1656,11 @@ export default function App() {
       localStorage.setItem("cs-theme", theme);
     } catch {}
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme === "dark" ? "#15110e" : "#f7f5f2");
+    if (meta)
+      meta.setAttribute("content", theme === "dark" ? "#15110e" : "#f7f5f2");
   }, [theme]);
 
-  const toggleTheme = () =>
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const [accent, setAccent] = useState(() => {
     try {
@@ -1767,7 +1848,9 @@ export default function App() {
           Created &amp; developed with <span className="cs-heart">♥</span> by
           Andrew
         </div>
-        <div className="cs-credit-year">© {new Date().getFullYear()} · Crew Status</div>
+        <div className="cs-credit-year">
+          © {new Date().getFullYear()} · Crew Status
+        </div>
       </footer>
     </div>
   );
@@ -1823,9 +1906,20 @@ function Gate({ resolve }) {
 
 function RouteArrow() {
   return (
-    <svg width="30" height="14" viewBox="0 0 30 14" fill="none" aria-hidden="true">
+    <svg
+      width="30"
+      height="14"
+      viewBox="0 0 30 14"
+      fill="none"
+      aria-hidden="true"
+    >
       <path d="M0 7h24" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M20 2l6 5-6 5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <path
+        d="M20 2l6 5-6 5"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill="none"
+      />
     </svg>
   );
 }
@@ -1930,7 +2024,9 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
       {deadhead ? (
         <div className="cs-dh">
           <span className="cs-dh-badge">Deadhead</span>
-          <span className="cs-dh-note">Riding as a passenger — not operating</span>
+          <span className="cs-dh-note">
+            Riding as a passenger — not operating
+          </span>
         </div>
       ) : null}
 
@@ -2047,7 +2143,9 @@ function NotificationToggle() {
       setEnabled(true);
     } catch (e) {
       if (e && e.message === "denied") {
-        setNote("Notifications are blocked. Enable them in your browser settings.");
+        setNote(
+          "Notifications are blocked. Enable them in your browser settings.",
+        );
       } else {
         setNote("Could not turn on notifications. Please try again.");
       }
@@ -2344,7 +2442,9 @@ function Viewer({ trip, now, onLock }) {
       <details className="cs-help">
         <summary className="cs-help-summary">
           How to read this
-          <span className="cs-help-chevron" aria-hidden="true">▸</span>
+          <span className="cs-help-chevron" aria-hidden="true">
+            ▸
+          </span>
         </summary>
         <ul>
           <li>
@@ -2416,8 +2516,8 @@ function Viewer({ trip, now, onLock }) {
                       <div
                         className={`cs-layover ${lay.overnight ? "overnight" : ""}`}
                       >
-                        {lay.overnight ? "Overnight" : "Layover"} in {lay.place} ·{" "}
-                        {lay.text}
+                        {lay.overnight ? "Overnight" : "Layover"} in {lay.place}{" "}
+                        · {lay.text}
                       </div>
                     )}
                   </React.Fragment>
@@ -2457,7 +2557,11 @@ function Admin({ trip, onPublish, onExit }) {
     (async () => {
       const p = await store.getPersonal();
       setBethNote(p.bethNote || "");
-      if (p.special) setSpecial({ date: p.special.date || "", label: p.special.label || "" });
+      if (p.special)
+        setSpecial({
+          date: p.special.date || "",
+          label: p.special.label || "",
+        });
     })();
   }, []);
 
@@ -2465,7 +2569,9 @@ function Admin({ trip, onPublish, onExit }) {
     setSpecialMsg("");
     try {
       await store.savePersonal({
-        special: special.date ? { date: special.date, label: special.label } : null,
+        special: special.date
+          ? { date: special.date, label: special.label }
+          : null,
       });
       setSpecialMsg(special.date ? "Countdown saved." : "Countdown cleared.");
     } catch {
@@ -2536,7 +2642,11 @@ function Admin({ trip, onPublish, onExit }) {
 
   const publish = async () => {
     setBusy(true);
-    const t = { legs, note: noteText.trim(), updatedAt: new Date().toISOString() };
+    const t = {
+      legs,
+      note: noteText.trim(),
+      updatedAt: new Date().toISOString(),
+    };
     try {
       await store.saveTrip(t);
       await onPublish(t);
@@ -2770,13 +2880,17 @@ function Admin({ trip, onPublish, onExit }) {
             className="cs-in"
             type="date"
             value={special.date}
-            onChange={(e) => setSpecial((s) => ({ ...s, date: e.target.value }))}
+            onChange={(e) =>
+              setSpecial((s) => ({ ...s, date: e.target.value }))
+            }
           />
           <input
             className="cs-in"
             placeholder="Anniversary"
             value={special.label}
-            onChange={(e) => setSpecial((s) => ({ ...s, label: e.target.value }))}
+            onChange={(e) =>
+              setSpecial((s) => ({ ...s, label: e.target.value }))
+            }
           />
         </div>
         <div className="cs-actions" style={{ marginTop: 12 }}>
