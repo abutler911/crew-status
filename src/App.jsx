@@ -1405,9 +1405,29 @@ function whenWord(dateStr, now) {
   });
 }
 
+// The trailing "landing ..." phrase for the in-air headline. Prefers the live
+// FlightAware ETA over the printed schedule, and flags early/late using the
+// same ±15-minute threshold as the per-leg status pill (describeLiveStatus), so
+// the headline and the leg card always agree. Falls back to the printed arrival
+// when there's no live estimate.
+function landingPhrase(leg, statuses) {
+  const st = statuses && statuses[legStatusKey(leg)];
+  const eta = st && st.estIn ? fmtClockTz(st.estIn, AIRPORT_TZ[leg.to]) : "";
+  if (eta) {
+    const arrLate =
+      st.arrivalDelay != null ? Math.round(st.arrivalDelay / 60) : null;
+    if (arrLate != null && arrLate >= 15)
+      return `landing ${eta} (${arrLate} min late)`;
+    if (arrLate != null && arrLate <= -15) return `landing early at ${eta}`;
+    return `landing ${eta}`;
+  }
+  return `landing ${fmtTime(leg.arrive)}`;
+}
+
 // Plain-language answer to "where is Andy right now?" plus a big status word.
 // `statuses` lets live data override the printed schedule (e.g. a flight that
-// landed early shouldn't still read as "in the air").
+// landed early shouldn't still read as "in the air", and the in-air landing
+// time tracks FlightAware's live ETA rather than the printed arrival).
 function liveSummary(s, now, statuses) {
   if (s.state === "home") {
     return { word: "Home", line: "Babe-a is home right now." };
@@ -1425,7 +1445,7 @@ function liveSummary(s, now, statuses) {
         : "is flying";
       return {
         word: "In the air",
-        line: `Babe-a ${verb} from ${from} to ${to}, landing ${fmtTime(leg.arrive)}.`,
+        line: `Babe-a ${verb} from ${from} to ${to}, ${landingPhrase(leg, statuses)}.`,
       };
     }
   }
