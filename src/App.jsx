@@ -1191,6 +1191,23 @@ function liveLanded(leg, statuses) {
   return !!(st && st.actualIn);
 }
 
+// How long a flown leg lingers on the board after it lands before it clears
+// itself. Once Babe-a is on the ground and settled a few hours later, the leg
+// drops off so the board only shows what's still ahead.
+const LEG_LINGER_MS = 5 * 3600 * 1000;
+
+// The instant a leg should disappear from the board: LEG_LINGER_MS past when it
+// landed. Uses the real landing time from live data when we have it (a leg that
+// landed early clears a little earlier too), otherwise the printed schedule.
+function legClearAt(leg, statuses) {
+  const st = statuses && statuses[legStatusKey(leg)];
+  const arr =
+    st && st.actualIn
+      ? new Date(st.actualIn).getTime()
+      : legDates(leg).arr.getTime();
+  return arr + LEG_LINGER_MS;
+}
+
 // Formats an ISO instant as a clock time in the given airport's zone.
 function fmtClockTz(iso, tz) {
   if (!iso) return "";
@@ -2479,9 +2496,14 @@ function Viewer({ trip, now, onLock }) {
       </details>
 
       {(() => {
-        // Group the sorted legs by their departure date.
+        // Drop legs that landed a few hours ago so the board only shows what's
+        // still ahead; the full trip still drives the status above.
+        const visibleLegs = s.sorted.filter(
+          (leg) => now < legClearAt(leg, statuses),
+        );
+        // Group the still-visible legs by their departure date.
         const groups = [];
-        s.sorted.forEach((leg) => {
+        visibleLegs.forEach((leg) => {
           let g = groups.find((x) => x.date === leg.date);
           if (!g) {
             g = { date: leg.date, legs: [] };
