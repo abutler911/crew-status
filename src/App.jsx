@@ -581,14 +581,16 @@ const css = `
 }
 
 /* ---- the #4eva bubble ---- */
-/* A glossy little soap-bubble that floats beside the greeting, in front of
-   everything else. Kept clear of the theme toggle in the top-right corner,
-   and pointer-events: none so it never blocks a tap. */
+/* A glossy little soap-bubble that floats over the status card's top-right
+   corner, in front of everything else. It sits below the greeting's text
+   line so it can never cover Beth's name, even when the wide "Good
+   afternoon" wording is up, and pointer-events: none so it never blocks
+   a tap. */
 .cs-greet { position: relative; }
 .cs-4eva {
   position: absolute;
-  top: -18px;
-  right: 56px;
+  top: 32px;
+  right: 0;
   z-index: 60;
   width: 74px;
   height: 74px;
