@@ -219,11 +219,24 @@ const css = `
 
 /* ---- note from Babe-a ---- */
 /* A handwritten aside, not another bordered card — just a crimson margin
-   rule and the words. */
+   rule and the words. The rule inks itself in first and the words follow,
+   like the note is being set down while she watches. */
 .cs-note {
   margin-top: 22px;
   padding-left: 16px;
-  border-left: 3px solid var(--crimson);
+  position: relative;
+}
+.cs-note::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--crimson);
+  transform: scaleY(0);
+  transform-origin: top;
+  animation: noteink 0.7s cubic-bezier(0.2,0.7,0.2,1) forwards;
 }
 .cs-note .body {
   font-family: 'Cormorant Garamond', Georgia, serif;
@@ -232,6 +245,11 @@ const css = `
   font-style: italic;
   color: var(--text);
 }
+.cs-note .body,
+.cs-note .label {
+  opacity: 0;
+  animation: notefade 0.9s ease 0.35s forwards;
+}
 .cs-note .label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
@@ -239,6 +257,22 @@ const css = `
   text-transform: uppercase;
   color: var(--faint);
   margin-top: 9px;
+}
+.cs-noteheart {
+  display: inline-block;
+  color: var(--crimson);
+  margin-left: 3px;
+  font-size: 12px;
+  animation: heartbeat 2.8s ease-in-out 1.6s infinite;
+}
+@keyframes noteink { to { transform: scaleY(1); } }
+@keyframes notefade { to { opacity: 1; } }
+/* two quick thumps, then a long rest — a heartbeat, not a strobe */
+@keyframes heartbeat {
+  0%, 24%, 100% { transform: scale(1); }
+  6% { transform: scale(1.3); }
+  12% { transform: scale(1); }
+  18% { transform: scale(1.22); }
 }
 
 /* ---- layover between legs ---- */
@@ -956,6 +990,9 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
 @media (prefers-reduced-motion: reduce) {
   .cs-leg { animation: none !important; opacity: 1; transform: none; }
   .cs-livedot { animation: none !important; }
+  .cs-note::before { animation: none !important; transform: none; }
+  .cs-note .body, .cs-note .label { animation: none !important; opacity: 1; }
+  .cs-noteheart { animation: none !important; }
 }
 @media (max-width: 480px) {
   .cs-gate h1 { font-size: 42px; }
@@ -2480,9 +2517,15 @@ function Viewer({ trip, now, onLock }) {
       )}
 
       {note && (
-        <blockquote className="cs-note">
+        /* keyed by the text so a fresh note replays the ink-in reveal */
+        <blockquote className="cs-note" key={note}>
           <div className="body">{note}</div>
-          <div className="label">— a note from Babe-a</div>
+          <div className="label">
+            — a note from Babe-a{" "}
+            <span className="cs-noteheart" aria-hidden="true">
+              ♥
+            </span>
+          </div>
         </blockquote>
       )}
 
