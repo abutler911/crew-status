@@ -580,6 +580,63 @@ const css = `
   margin-left: 2px;
 }
 
+/* ---- the #4eva bubble ---- */
+/* A glossy little soap-bubble that floats beside the greeting, in front of
+   everything else. Kept clear of the theme toggle in the top-right corner,
+   and pointer-events: none so it never blocks a tap. */
+.cs-greet { position: relative; }
+.cs-4eva {
+  position: absolute;
+  top: -18px;
+  right: 56px;
+  z-index: 60;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 28%,
+    color-mix(in srgb, var(--crimson) 55%, #fff) 0%,
+    var(--crimson) 55%,
+    color-mix(in srgb, var(--crimson) 55%, #000) 100%);
+  box-shadow:
+    0 12px 26px var(--crimson-dim),
+    0 6px 16px rgba(20,18,16,0.25),
+    inset 0 1px 2px rgba(255,255,255,0.45),
+    inset 0 -6px 12px rgba(0,0,0,0.18);
+  animation: cs-4eva-float 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.cs-4eva::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  width: 26px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.55);
+  filter: blur(3px);
+  transform: rotate(-24deg);
+}
+.cs-greet .cs-4eva span {
+  font-family: 'Great Vibes', cursive;
+  font-size: 25px;
+  line-height: 1;
+  color: #fff;
+  margin: 0;
+  transform: rotate(-8deg);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+@keyframes cs-4eva-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-9px) rotate(3deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-4eva { animation: none; }
+}
+
 /* a note from Beth */
 .cs-bethnote { margin-top: 30px; }
 .cs-bethnote-label {
@@ -2277,11 +2334,15 @@ function NotificationToggle() {
   );
 }
 
-// "Good morning, Beth" at the very top of every screen.
+// "Good morning, Beth" at the very top of every screen, with the little
+// #4eva bubble floating alongside it.
 function Greeting({ now }) {
   return (
     <div className="cs-greet">
       {greetingWord(now)}, <span>Beth</span>
+      <div className="cs-4eva" aria-hidden="true">
+        <span>#4eva</span>
+      </div>
     </div>
   );
 }
