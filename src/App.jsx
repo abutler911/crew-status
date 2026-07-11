@@ -552,11 +552,12 @@ const css = `
 }
 .cs-credit-year {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
+  font-size: 9px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--faint);
   margin-top: 9px;
+  white-space: nowrap;
 }
 
 /* ---- personalization: greeting ---- */
