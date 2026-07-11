@@ -7,7 +7,7 @@ import * as push from "./lib/push.js";
 // the browser anymore.
 
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@1,400;1,500&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -560,14 +560,24 @@ const css = `
 }
 
 /* ---- personalization: greeting ---- */
+/* "Good evening" in Playfair's romantic italic, and her name in Great Vibes —
+   a real calligraphy script, run larger because script faces render small. */
 .cs-greet {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 22px;
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  font-size: 21px;
   font-style: italic;
   color: var(--muted);
   margin-bottom: 14px;
 }
-.cs-greet span { color: var(--crimson); font-style: normal; font-weight: 600; }
+.cs-greet span {
+  font-family: 'Great Vibes', cursive;
+  font-size: 34px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--crimson);
+  margin-left: 2px;
+}
 
 /* a note from Beth */
 .cs-bethnote { margin-top: 30px; }
