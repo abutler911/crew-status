@@ -7,7 +7,7 @@ import * as push from "./lib/push.js";
 // the browser anymore.
 
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@1,400;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@1,400;1,500&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -169,10 +169,12 @@ const css = `
   background: var(--surface);
 }
 .cs-card-word {
-  font-size: 48px;
-  font-weight: 500;
-  line-height: 1.02;
-  letter-spacing: -0.015em;
+  font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  font-size: 54px;
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: var(--text);
 }
 .cs-card-sub {
@@ -1068,7 +1070,7 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   .cs-gate h1 { font-size: 42px; }
   .cs-gate { margin-top: 10vh; }
   .cs-card { padding: 20px 18px; }
-  .cs-card-word { font-size: 38px; }
+  .cs-card-word { font-size: 44px; }
   .cs-dayhead { font-size: 25px; }
   .cs-dayhead .cs-daydate { font-size: 20px; }
   .cs-grid, .cs-grid.b { grid-template-columns: 1fr 1fr; }
