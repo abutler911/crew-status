@@ -170,12 +170,15 @@ const css = `
 }
 .cs-card-word {
   font-family: 'Cinzel', 'Cormorant Garamond', Georgia, serif;
-  font-size: 38px;
+  font-size: 34px;
   font-weight: 400;
-  line-height: 1.08;
-  letter-spacing: 0.09em;
+  line-height: 1.12;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text);
+  /* The #4eva bubble floats over the card's top-right corner; keep the
+     headline out from under it, wrapping early if a phrase runs long. */
+  padding-right: 58px;
 }
 .cs-card-sub {
   font-family: 'Cormorant Garamond', Georgia, serif;
@@ -1070,7 +1073,7 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   .cs-gate h1 { font-size: 42px; }
   .cs-gate { margin-top: 10vh; }
   .cs-card { padding: 20px 18px; }
-  .cs-card-word { font-size: 28px; }
+  .cs-card-word { font-size: 24px; letter-spacing: 0.03em; }
   .cs-dayhead { font-size: 25px; }
   .cs-dayhead .cs-daydate { font-size: 20px; }
   .cs-grid, .cs-grid.b { grid-template-columns: 1fr 1fr; }
