@@ -173,7 +173,7 @@ const css = `
   font-size: 34px;
   font-weight: 400;
   line-height: 1.12;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text);
   /* The #4eva bubble floats over the card's top-right corner; keep the
@@ -1073,7 +1073,7 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   .cs-gate h1 { font-size: 42px; }
   .cs-gate { margin-top: 10vh; }
   .cs-card { padding: 20px 18px; }
-  .cs-card-word { font-size: 24px; letter-spacing: 0.05em; }
+  .cs-card-word { font-size: 24px; letter-spacing: 0.03em; }
   .cs-dayhead { font-size: 25px; }
   .cs-dayhead .cs-daydate { font-size: 20px; }
   .cs-grid, .cs-grid.b { grid-template-columns: 1fr 1fr; }
