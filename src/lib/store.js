@@ -83,13 +83,19 @@ export async function clearTrip() {
   await fetch("/api/trip", { method: "DELETE", headers: authHeaders() });
 }
 
-// Personal record: { noteFromBeth, noteFromBethAt, noteFromBabea,
-// noteFromBabeaAt, special }. Returns defaults on failure.
+// Personal record: each direction's latest note ({ noteFromBeth,
+// noteFromBethAt, noteFromBethSeenAt }, likewise for Babe-a), short note
+// histories (notesFromBeth / notesFromBabea, newest first), and the shared
+// special date. Returns defaults on failure.
 const PERSONAL_DEFAULTS = {
   noteFromBeth: "",
   noteFromBethAt: null,
+  noteFromBethSeenAt: null,
   noteFromBabea: "",
   noteFromBabeaAt: null,
+  noteFromBabeaSeenAt: null,
+  notesFromBeth: [],
+  notesFromBabea: [],
   special: null,
 };
 export async function getPersonal() {
@@ -102,8 +108,18 @@ export async function getPersonal() {
   }
 }
 
+// Tell the server this person's board just displayed the other person's
+// note, so their composer can show a little "seen" mark. `from` is whose
+// note was read ("beth" or "babea"). Quiet failure — it's a nicety.
+export async function markNoteSeen(from) {
+  try {
+    await savePersonal({ sawNoteFrom: from });
+  } catch {}
+}
+
 // Save personal fields. Beth may set noteFromBeth; Babe-a may set
-// noteFromBabea and special ({ date, label } or null).
+// noteFromBabea and special ({ date, label } or null). Either may send
+// sawNoteFrom (see markNoteSeen).
 export async function savePersonal(fields) {
   const res = await fetch("/api/personal", {
     method: "POST",
