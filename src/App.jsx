@@ -2471,7 +2471,6 @@ function NoteComposer({ me, initial, sentAt, now }) {
   const [text, setText] = useState(initial || "");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
-  const dirty = text.trim() !== (initial || "").trim();
 
   // The saved note arrives async (and refreshes with the board). Reflect it
   // unless something is mid-edit, so typing never gets clobbered.
@@ -2487,6 +2486,12 @@ function NoteComposer({ me, initial, sentAt, now }) {
   // refresh. While the text matches the last thing sent (this session or the
   // saved record), the aside shows; edit it and the aside steps aside.
   const [lastSent, setLastSent] = useState(null); // { text, at }
+
+  // Unsent means the text differs from the latest thing we know is saved: a
+  // send from this session counts immediately, so the button doesn't re-arm
+  // while waiting for the board refresh to catch up.
+  const savedText = lastSent ? lastSent.text : (initial || "").trim();
+  const dirty = text.trim() !== savedText;
 
   const save = async () => {
     setBusy(true);
