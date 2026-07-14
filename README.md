@@ -15,11 +15,22 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Logins
+
+The two access codes identify people, not permission levels: Babe-a's code
+(`ADMIN_CODE`) opens his own personalized board plus the flight-deck screen for
+publishing trips; Beth's code (`VIEW_CODE`) opens her board. Each board greets
+its own person, shows the other person's latest note, and has a composer to
+send a note back. Notes live in the shared `personal` record (Netlify Blobs) so
+they survive a trip being cleared or republished.
+
 ## Push notifications
 
 The app can push a notification to subscribed devices when a leg **departs**,
-**lands**, or **falls behind schedule**. Both roles (Beth's board and Babe-a's
-admin) can opt in or out per device via the toggle in the footer.
+**lands**, or **falls behind schedule**, and when the other person leaves or
+updates a **note**. Note pushes go only to the other person's devices —
+subscriptions are tagged with who was signed in when the device subscribed.
+Either person can opt in or out per device via the toggle in the footer.
 
 ### How it works
 

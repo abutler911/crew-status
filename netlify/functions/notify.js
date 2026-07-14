@@ -12,8 +12,8 @@
 
 import { getStore } from "@netlify/blobs";
 import { createHash } from "node:crypto";
-import webpush from "web-push";
 import { toIdent, fetchStatus } from "../lib/aero.js";
+import { fanOut } from "../lib/push-fanout.js";
 import { SUBS_STORE } from "./push.js";
 
 const TRIPS_STORE = "trips";
@@ -101,37 +101,6 @@ function eventsForLeg(leg, status, prev) {
   return events;
 }
 
-// Sends one payload to every subscription, pruning the ones the push service
-// reports as gone (404 / 410).
-async function fanOut(subsStore, payload) {
-  let list;
-  try {
-    list = await subsStore.list();
-  } catch {
-    return;
-  }
-  const body = JSON.stringify(payload);
-  for (const { key } of list.blobs || []) {
-    let rec;
-    try {
-      rec = await subsStore.get(key, { type: "json" });
-    } catch {
-      continue;
-    }
-    if (!rec || !rec.subscription) continue;
-    try {
-      await webpush.sendNotification(rec.subscription, body);
-    } catch (e) {
-      const code = e && e.statusCode;
-      if (code === 404 || code === 410) {
-        try {
-          await subsStore.delete(key);
-        } catch {}
-      }
-    }
-  }
-}
-
 export default async () => {
   const aeroKey = process.env.AEROAPI_KEY;
   const vapidPublic = process.env.VAPID_PUBLIC_KEY;
@@ -162,8 +131,6 @@ export default async () => {
   if (legs.length === 0) {
     return new Response("no trip", { status: 200 });
   }
-
-  webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
 
   const stateStore = getStore(STATE_STORE);
   let state = null;

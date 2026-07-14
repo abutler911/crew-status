@@ -9,8 +9,9 @@ function authHeaders(extra) {
   return { ...(extra || {}), "x-access-code": accessCode || "" };
 }
 
-// Sends the typed code to the server, which says whether it's "admin", "view",
-// or invalid. On success we remember the code, in memory and on the device.
+// Sends the typed code to the server, which says who it belongs to. On success
+// we remember the code, in memory and on the device, and return the identity:
+// { who: "babea" | "beth", canPublish }. Returns null for a bad code.
 export async function authenticate(code) {
   try {
     const res = await fetch("/api/auth", {
@@ -20,12 +21,12 @@ export async function authenticate(code) {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    if (data.role === "admin" || data.role === "view") {
+    if (data.who === "babea" || data.who === "beth") {
       accessCode = code;
       try {
         localStorage.setItem(CODE_KEY, code);
       } catch {}
-      return data.role;
+      return { who: data.who, canPublish: !!data.canPublish };
     }
     return null;
   } catch {
@@ -34,21 +35,21 @@ export async function authenticate(code) {
 }
 
 // On app load: if a code was saved on this device, re-check it with the server
-// and return the role, so we can skip the gate. Returns null if nothing saved
-// or the saved code is no longer valid.
+// and return the identity, so we can skip the gate. Returns null if nothing
+// saved or the saved code is no longer valid.
 export async function resume() {
   let saved = null;
   try {
     saved = localStorage.getItem(CODE_KEY);
   } catch {}
   if (!saved) return null;
-  const role = await authenticate(saved);
-  if (!role) {
+  const me = await authenticate(saved);
+  if (!me) {
     try {
       localStorage.removeItem(CODE_KEY);
     } catch {}
   }
-  return role;
+  return me;
 }
 
 export function signOut() {
@@ -82,19 +83,21 @@ export async function clearTrip() {
   await fetch("/api/trip", { method: "DELETE", headers: authHeaders() });
 }
 
-// Personal record: { bethNote, special }. Returns defaults on failure.
+// Personal record: { noteFromBeth, noteFromBabea, special }. Returns defaults
+// on failure.
+const PERSONAL_DEFAULTS = { noteFromBeth: "", noteFromBabea: "", special: null };
 export async function getPersonal() {
   try {
     const res = await fetch("/api/personal", { headers: authHeaders() });
-    if (!res.ok) return { bethNote: "", special: null };
+    if (!res.ok) return { ...PERSONAL_DEFAULTS };
     return await res.json();
   } catch {
-    return { bethNote: "", special: null };
+    return { ...PERSONAL_DEFAULTS };
   }
 }
 
-// Save personal fields. Beth (view) may set bethNote; admin may also set
-// special ({ date, label } or null).
+// Save personal fields. Beth may set noteFromBeth; Babe-a may set
+// noteFromBabea and special ({ date, label } or null).
 export async function savePersonal(fields) {
   const res = await fetch("/api/personal", {
     method: "POST",
