@@ -1,4 +1,4 @@
-// Service worker for Where's Babe-a? — push notifications only.
+// Service worker for Where in the world is Babe-a? — push notifications only.
 //
 // It deliberately does NOT cache the app: keeping it cache-free means the PWA
 // always loads the latest deploy and we never have to ship cache-busting logic.
@@ -12,10 +12,10 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: "Where's Babe-a?", body: event.data ? event.data.text() : "" };
+    data = { title: "Where in the world is Babe-a?", body: event.data ? event.data.text() : "" };
   }
 
-  const title = data.title || "Where's Babe-a?";
+  const title = data.title || "Where in the world is Babe-a?";
   const options = {
     body: data.body || "",
     tag: data.tag || undefined,
