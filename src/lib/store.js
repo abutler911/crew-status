@@ -83,9 +83,15 @@ export async function clearTrip() {
   await fetch("/api/trip", { method: "DELETE", headers: authHeaders() });
 }
 
-// Personal record: { noteFromBeth, noteFromBabea, special }. Returns defaults
-// on failure.
-const PERSONAL_DEFAULTS = { noteFromBeth: "", noteFromBabea: "", special: null };
+// Personal record: { noteFromBeth, noteFromBethAt, noteFromBabea,
+// noteFromBabeaAt, special }. Returns defaults on failure.
+const PERSONAL_DEFAULTS = {
+  noteFromBeth: "",
+  noteFromBethAt: null,
+  noteFromBabea: "",
+  noteFromBabeaAt: null,
+  special: null,
+};
 export async function getPersonal() {
   try {
     const res = await fetch("/api/personal", { headers: authHeaders() });
