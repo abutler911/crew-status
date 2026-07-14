@@ -270,6 +270,8 @@ const css = `
   font-size: 12px;
   animation: heartbeat 2.8s ease-in-out 1.6s infinite;
 }
+/* when the note was set down — a softer aside within the label */
+.cs-note-when { opacity: 0.75; }
 @keyframes noteink { to { transform: scaleY(1); } }
 @keyframes notefade { to { opacity: 1; } }
 /* two quick thumps, then a long rest — a heartbeat, not a strobe */
@@ -654,7 +656,19 @@ const css = `
   color: var(--faint);
   margin-bottom: 8px;
 }
-.cs-bethnote-row { margin-top: 10px; }
+.cs-bethnote-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+/* when your saved note went out, sitting quietly beside the send button */
+.cs-bethnote-when {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--faint);
+}
 
 /* accent swatches */
 .cs-accent {
@@ -1524,6 +1538,39 @@ function layoverAfter(leg, next) {
   const overnight =
     land.toDateString() !== off.toDateString() || ms >= 8 * 3600 * 1000;
   return { overnight, place, text: humanizeDuration(ms) };
+}
+
+// A warm phrase for when a note was set down: "just now", "20 minutes ago",
+// "this morning", "last night", "yesterday afternoon", "Saturday", "June 3".
+// Returns "" for notes from before timestamps existed (or bad data), so the
+// label simply omits the time rather than inventing one.
+function noteWhenWord(atIso, now) {
+  if (!atIso) return "";
+  const at = new Date(atIso);
+  if (isNaN(at)) return "";
+  const mins = Math.round((now - at) / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} minutes ago`;
+
+  const h = at.getHours();
+  const days = daysBetween(at, now);
+  if (days <= 0) {
+    // Earlier the same day. Before 5am reads as "early this morning" —
+    // "this night" isn't a thing anyone says.
+    if (h < 5) return "early this morning";
+    if (h < 12) return "this morning";
+    if (h < 17) return "this afternoon";
+    return "this evening";
+  }
+  if (days === 1) {
+    if (h >= 17 || h < 5) return "last night";
+    if (h < 12) return "yesterday morning";
+    return "yesterday afternoon";
+  }
+  if (days < 7) {
+    return at.toLocaleDateString(undefined, { weekday: "long" });
+  }
+  return at.toLocaleDateString(undefined, { month: "long", day: "numeric" });
 }
 
 // A casual day word for sentences: "today" / "tomorrow" / "Saturday".
@@ -2415,8 +2462,10 @@ function StatusCard({ word, sub, countdown, special, now }) {
 }
 
 // Lets whoever is signed in leave a short note for the other person. Beth
-// writes noteFromBeth, Babe-a writes noteFromBabea.
-function NoteComposer({ me, initial }) {
+// writes noteFromBeth, Babe-a writes noteFromBabea. `sentAt` is when the saved
+// note went out; a quiet "Sent this morning" sits beside the button so you
+// know your note is up without re-reading it.
+function NoteComposer({ me, initial, sentAt, now }) {
   const otherName = PEOPLE[PEOPLE[me.who].other].name;
   const field = me.who === "beth" ? "noteFromBeth" : "noteFromBabea";
   const [text, setText] = useState(initial || "");
@@ -2433,15 +2482,34 @@ function NoteComposer({ me, initial }) {
     lastInitial.current = next;
   }, [initial]);
 
+  // A save remembers what went out and when, so the aside appears the
+  // instant it lands — the `initial` prop only catches up on the next board
+  // refresh. While the text matches the last thing sent (this session or the
+  // saved record), the aside shows; edit it and the aside steps aside.
+  const [lastSent, setLastSent] = useState(null); // { text, at }
+
   const save = async () => {
     setBusy(true);
     try {
-      await store.savePersonal({ [field]: text.trim() });
+      const res = await store.savePersonal({ [field]: text.trim() });
+      const at = res ? res[field + "At"] : undefined;
+      setLastSent({
+        text: text.trim(),
+        at: at !== undefined ? at : new Date().toISOString(),
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {}
     setBusy(false);
   };
+
+  const sentAtEff =
+    lastSent && lastSent.text === text.trim()
+      ? lastSent.at
+      : !dirty
+        ? sentAt
+        : null;
+  const sentWord = text.trim() ? noteWhenWord(sentAtEff, now) : "";
 
   return (
     <div className="cs-bethnote">
@@ -2469,20 +2537,26 @@ function NoteComposer({ me, initial }) {
         >
           {busy ? "Saving" : saved ? "Sent 🤍" : `Send to ${otherName}`}
         </button>
+        {sentWord ? (
+          <span className="cs-bethnote-when">Sent {sentWord}</span>
+        ) : null}
       </div>
     </div>
   );
 }
 
-// The other person's latest note, set down in ink. Keyed by the text so a
-// fresh note replays the ink-in reveal.
-function NoteFromOther({ text, name }) {
+// The other person's latest note, set down in ink, with when they left it.
+// Keyed by the text so a fresh note replays the ink-in reveal (a ticking
+// time phrase alone doesn't).
+function NoteFromOther({ text, name, at, now }) {
   if (!text) return null;
+  const when = noteWhenWord(at, now);
   return (
     <blockquote className="cs-note" key={text}>
       <div className="body">{text}</div>
       <div className="label">
-        — a note from {name}{" "}
+        — a note from {name}
+        {when ? <span className="cs-note-when"> · {when}</span> : null}{" "}
         <span className="cs-noteheart" aria-hidden="true">
           ♥
         </span>
@@ -2573,7 +2647,9 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
   // refreshes, so a new note from the other person shows up on its own.
   const [personal, setPersonal] = useState({
     noteFromBeth: "",
+    noteFromBethAt: null,
     noteFromBabea: "",
+    noteFromBabeaAt: null,
     special: null,
   });
   useEffect(() => {
@@ -2596,7 +2672,16 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
       ? personal.noteFromBeth
       : personal.noteFromBabea || (trip && trip.note) || ""
   ).trim();
+  // The trip.note fallback predates timestamps, so it never has one.
+  const noteToMeAt =
+    me.who === "babea"
+      ? personal.noteFromBethAt
+      : personal.noteFromBabea
+        ? personal.noteFromBabeaAt
+        : null;
   const myNote = me.who === "beth" ? personal.noteFromBeth : personal.noteFromBabea;
+  const myNoteAt =
+    me.who === "beth" ? personal.noteFromBethAt : personal.noteFromBabeaAt;
 
   const foot = (
     <div className="cs-foot">
@@ -2624,11 +2709,11 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
           now={now}
         />
 
-        <NoteFromOther text={noteToMe} name={otherName} />
+        <NoteFromOther text={noteToMe} name={otherName} at={noteToMeAt} now={now} />
 
         <div className="cs-rule" />
 
-        <NoteComposer me={me} initial={myNote} />
+        <NoteComposer me={me} initial={myNote} sentAt={myNoteAt} now={now} />
 
         {foot}
       </div>
@@ -2676,7 +2761,7 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
         </div>
       )}
 
-      <NoteFromOther text={noteToMe} name={otherName} />
+      <NoteFromOther text={noteToMe} name={otherName} at={noteToMeAt} now={now} />
 
       <div className="cs-rule" />
 
@@ -2774,7 +2859,7 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
         });
       })()}
 
-      <NoteComposer me={me} initial={myNote} />
+      <NoteComposer me={me} initial={myNote} sentAt={myNoteAt} now={now} />
 
       {foot}
     </div>
@@ -2795,12 +2880,14 @@ function Admin({ trip, onPublish, onBoard }) {
   // record (not on the trip), so it survives a trip being cleared; notes
   // written before that change rode on the trip, hence the fallback.
   const [noteFromBeth, setNoteFromBeth] = useState("");
+  const [noteFromBethAt, setNoteFromBethAt] = useState(null);
   const [special, setSpecial] = useState({ date: "", label: "" });
   const [specialMsg, setSpecialMsg] = useState("");
   useEffect(() => {
     (async () => {
       const p = await store.getPersonal();
       setNoteFromBeth(p.noteFromBeth || "");
+      setNoteFromBethAt(p.noteFromBethAt || null);
       setNoteText(p.noteFromBabea || trip?.note || "");
       if (p.special)
         setSpecial({
@@ -3116,7 +3203,13 @@ function Admin({ trip, onPublish, onBoard }) {
 
       {noteFromBeth ? (
         <div className="cs-note" style={{ marginTop: 28 }}>
-          <div className="label">A note from Beth</div>
+          <div className="label">
+            A note from Beth
+            {(() => {
+              const w = noteWhenWord(noteFromBethAt, new Date());
+              return w ? <span className="cs-note-when"> · {w}</span> : null;
+            })()}
+          </div>
           <div className="body">{noteFromBeth}</div>
         </div>
       ) : null}

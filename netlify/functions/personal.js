@@ -31,7 +31,9 @@ function whoOf(req) {
 }
 
 // Reads the record, folding the pre-identity field name (bethNote) into the
-// symmetric shape so nothing Beth already wrote is lost.
+// symmetric shape so nothing Beth already wrote is lost. The *At fields are
+// when each note was last changed; notes written before timestamps existed
+// have none, and the board simply doesn't show a time for them.
 async function read(store) {
   let data = null;
   try {
@@ -40,7 +42,9 @@ async function read(store) {
   const d = data && typeof data === "object" ? data : {};
   return {
     noteFromBeth: d.noteFromBeth || d.bethNote || "",
+    noteFromBethAt: d.noteFromBethAt || null,
     noteFromBabea: d.noteFromBabea || "",
+    noteFromBabeaAt: d.noteFromBabeaAt || null,
     special: d.special || null,
   };
 }
@@ -69,12 +73,23 @@ export default async (req) => {
       noteFromBabea: data.noteFromBabea,
     };
 
-    // Each person writes their own note, never the other's.
+    // Each person writes their own note, never the other's. A change to the
+    // text re-stamps its time; clearing the note clears the time with it.
     if (who === "beth" && typeof body.noteFromBeth === "string") {
       data.noteFromBeth = body.noteFromBeth.slice(0, NOTE_MAX);
+      if (data.noteFromBeth !== before.noteFromBeth) {
+        data.noteFromBethAt = data.noteFromBeth
+          ? new Date().toISOString()
+          : null;
+      }
     }
     if (who === "babea" && typeof body.noteFromBabea === "string") {
       data.noteFromBabea = body.noteFromBabea.slice(0, NOTE_MAX);
+      if (data.noteFromBabea !== before.noteFromBabea) {
+        data.noteFromBabeaAt = data.noteFromBabea
+          ? new Date().toISOString()
+          : null;
+      }
     }
 
     // Only Babe-a sets the special-date countdown.
