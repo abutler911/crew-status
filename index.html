@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
 
-    <title>Where's Babe-a?</title>
+    <title>Where in the world is Babe-a?</title>
     <meta name="description" content="Babe-a's current flight trip." />
 
     <!-- Favicons -->
@@ -23,9 +23,73 @@
     <!-- PWA manifest -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#f7f5f2" />
+
+    <!-- Splash shown while the app bundle loads; React replaces it on mount.
+         Colors are hardcoded here (light + dark) because the app's CSS hasn't
+         arrived yet. Keep them in step with the theme vars in src/App.jsx. -->
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: #f7f5f2;
+        color: #5c554c;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12px;
+        letter-spacing: 0.22em;
+      }
+      #splash .splash-globe { stroke: #1b1a18; }
+      #splash .splash-grid { stroke: #524c45; }
+      #splash .splash-orbit-path { stroke: #5c554c; }
+      html.splash-dark #splash { background: #15110e; color: #9d968c; }
+      html.splash-dark #splash .splash-globe { stroke: #f4f1ec; }
+      html.splash-dark #splash .splash-grid { stroke: #c2bab0; }
+      html.splash-dark #splash .splash-orbit-path { stroke: #9d968c; }
+      html.splash-dark #splash .splash-accent { fill: #ef5564; }
+      #splash .splash-spin {
+        transform-origin: 60px 60px;
+        animation: splash-orbit 7s linear infinite;
+      }
+      @keyframes splash-orbit {
+        to { transform: rotate(360deg); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash .splash-spin { animation: none; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="splash">
+        <svg width="112" height="112" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+          <circle class="splash-orbit-path" cx="60" cy="60" r="46" stroke-width="1.4" stroke-dasharray="1.5 7" stroke-linecap="round" opacity="0.55" />
+          <circle class="splash-globe" cx="60" cy="60" r="27" stroke-width="2.4" />
+          <ellipse class="splash-grid" cx="60" cy="60" rx="27" ry="9.5" stroke-width="1.3" opacity="0.75" />
+          <ellipse class="splash-grid" cx="60" cy="60" rx="10.5" ry="27" stroke-width="1.3" opacity="0.75" />
+          <g transform="translate(49 53) scale(0.5) translate(-12 -12)">
+            <path class="splash-accent" fill="#be2639" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </g>
+          <g class="splash-spin">
+            <g transform="translate(60 14) rotate(90) scale(0.8) translate(-12 -12)">
+              <path class="splash-accent" fill="#be2639" d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+            </g>
+          </g>
+        </svg>
+        <div>LOADING</div>
+      </div>
+    </div>
+    <script>
+      // Match the splash to a previously chosen dark theme before paint.
+      try {
+        if (localStorage.getItem("cs-theme") === "dark") {
+          document.documentElement.classList.add("splash-dark");
+        }
+      } catch (e) {}
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

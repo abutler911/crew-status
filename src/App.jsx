@@ -105,7 +105,7 @@ const css = `
   background: var(--line);
 }
 .cs-gate h1 {
-  font-size: 58px;
+  font-size: 48px;
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.015em;
@@ -117,6 +117,25 @@ const css = `
   color: var(--crimson);
 }
 .cs-gate p { color: var(--muted); font-size: 21px; margin-bottom: 32px; }
+
+/* ---- logo: globe, orbiting plane, heart for home ---- */
+.cs-logo { display: block; }
+.cs-logo .cs-logo-spin {
+  transform-origin: 60px 60px;
+  animation: cs-logo-orbit 7s linear infinite;
+}
+@keyframes cs-logo-orbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cs-logo .cs-logo-spin { animation: none; }
+}
+.cs-gate .cs-logo { margin-bottom: 26px; }
+.cs-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin-top: 18vh;
+}
 .cs-field { display: flex; gap: 10px; }
 .cs-input {
   flex: 1;
@@ -1177,7 +1196,7 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   .cs-noteheart { animation: none !important; }
 }
 @media (max-width: 480px) {
-  .cs-gate h1 { font-size: 42px; }
+  .cs-gate h1 { font-size: 35px; }
   .cs-gate { margin-top: 10vh; }
   .cs-card { padding: 20px 18px; }
   .cs-card-word { font-size: 24px; letter-spacing: 0.03em; }
@@ -2100,16 +2119,18 @@ export default function App() {
     return (
       <div className={`cs-root ${theme === "dark" ? "dark" : ""}`}>
         <style>{css}</style>
-        <div
-          className="cs-shell mono"
-          style={{
-            marginTop: "20vh",
-            color: "var(--faint)",
-            letterSpacing: "0.2em",
-            fontSize: 12,
-          }}
-        >
-          LOADING
+        <div className="cs-shell cs-loading">
+          <WorldLogo size={112} />
+          <div
+            className="mono"
+            style={{
+              color: "var(--faint)",
+              letterSpacing: "0.2em",
+              fontSize: 12,
+            }}
+          >
+            LOADING
+          </div>
         </div>
       </div>
     );
@@ -2225,9 +2246,10 @@ function Gate({ resolve }) {
   };
   return (
     <div className="cs-gate">
+      <WorldLogo size={88} />
       <div className="cs-eyebrow">Private access</div>
       <h1>
-        Where's <em>Babe-a</em>?
+        Where in the world is <em>Babe-a</em>?
       </h1>
       <p>Enter your access code.</p>
       <div className="cs-field">
@@ -2253,6 +2275,69 @@ function Gate({ resolve }) {
       </div>
       {err && <div className="cs-err">Code not recognized. Try again.</div>}
     </div>
+  );
+}
+
+// The app mark: a little globe with Babe-a's plane circling it and a heart
+// for home. `spin` sends the plane around its orbit (CSS skips the animation
+// when the user prefers reduced motion). Strokes and fills ride the theme
+// vars, so the plane and heart follow whichever accent color is chosen.
+// A standalone copy lives at public/logo.svg; the pre-React splash in
+// index.html carries its own inline copy with hardcoded colors.
+function WorldLogo({ size = 96, spin = true }) {
+  return (
+    <svg
+      className="cs-logo"
+      width={size}
+      height={size}
+      viewBox="0 0 120 120"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="60"
+        cy="60"
+        r="46"
+        stroke="var(--faint)"
+        strokeWidth="1.4"
+        strokeDasharray="1.5 7"
+        strokeLinecap="round"
+        opacity="0.55"
+      />
+      <circle cx="60" cy="60" r="27" stroke="var(--text)" strokeWidth="2.4" />
+      <ellipse
+        cx="60"
+        cy="60"
+        rx="27"
+        ry="9.5"
+        stroke="var(--muted)"
+        strokeWidth="1.3"
+        opacity="0.75"
+      />
+      <ellipse
+        cx="60"
+        cy="60"
+        rx="10.5"
+        ry="27"
+        stroke="var(--muted)"
+        strokeWidth="1.3"
+        opacity="0.75"
+      />
+      <g transform="translate(49 53) scale(0.5) translate(-12 -12)">
+        <path
+          fill="var(--crimson)"
+          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+        />
+      </g>
+      <g className={spin ? "cs-logo-spin" : undefined}>
+        <g transform="translate(60 14) rotate(90) scale(0.8) translate(-12 -12)">
+          <path
+            fill="var(--crimson)"
+            d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"
+          />
+        </g>
+      </g>
+    </svg>
   );
 }
 
