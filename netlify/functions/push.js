@@ -3,10 +3,11 @@
 //   POST /api/push  { action:"subscribe", subscription }   store this device
 //   POST /api/push  { action:"unsubscribe", endpoint }     forget this device
 //
-// Needs a valid code (view or admin) in the "x-access-code" header. Subscriptions
-// are kept in Netlify Blobs, keyed by a hash of the endpoint, and tagged with the
-// role so we know who asked. The background notifier (functions/notify.js) reads
-// this store to fan a push out to every subscribed device.
+// Needs a valid code (either person) in the "x-access-code" header. Subscriptions
+// are kept in Netlify Blobs, keyed by a hash of the endpoint, and tagged with
+// who subscribed ("beth" | "babea") so note pushes can target one person. The
+// background notifier (functions/notify.js) reads this store to fan flight
+// pushes out to every subscribed device.
 //
 // Push is only "configured" when the VAPID env vars are set
 // (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT). When they're missing
@@ -21,10 +22,10 @@ function norm(s) {
   return (s || "").replace(/\s+/g, "").toLowerCase();
 }
 
-function roleOf(req) {
+function whoOf(req) {
   const c = norm(req.headers.get("x-access-code"));
-  if (c && c === norm(process.env.ADMIN_CODE)) return "admin";
-  if (c && c === norm(process.env.VIEW_CODE)) return "view";
+  if (c && c === norm(process.env.ADMIN_CODE)) return "babea";
+  if (c && c === norm(process.env.VIEW_CODE)) return "beth";
   return null;
 }
 
@@ -34,8 +35,8 @@ export function endpointKey(endpoint) {
 }
 
 export default async (req) => {
-  const role = roleOf(req);
-  if (role !== "admin" && role !== "view") {
+  const who = whoOf(req);
+  if (who !== "babea" && who !== "beth") {
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -76,7 +77,7 @@ export default async (req) => {
     try {
       await store.setJSON(endpointKey(sub.endpoint), {
         subscription: sub,
-        role,
+        who,
         createdAt: Date.now(),
       });
     } catch (e) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as store from "./lib/store.js";
 import * as push from "./lib/push.js";
 
@@ -1451,7 +1451,14 @@ function homeCountdown(s, now) {
   return { when, sleeps };
 }
 
-// Time-of-day greeting for Beth.
+// The two people who sign in. Each code identifies a person; Babe-a's can also
+// publish trips. `other` is who their notes go to.
+const PEOPLE = {
+  beth: { name: "Beth", other: "babea" },
+  babea: { name: "Babe-a", other: "beth" },
+};
+
+// Time-of-day greeting.
 function greetingWord(now) {
   const h = now.getHours();
   if (h < 5) return "Late night";
@@ -1461,18 +1468,29 @@ function greetingWord(now) {
   return "Good night";
 }
 
-// Warm rotating messages for the home screen, stable across a given day.
-const HOME_MESSAGES = [
-  "He's home — soak up every minute. 🤍",
-  "No flights on the board. Enjoy each other. 🤍",
-  "Grounded and right where he belongs. 🤍",
-  "Home sweet home. Make it count. 🤍",
-  "He's all yours today. 🤍",
-];
-function homeMessage(now) {
+// Warm rotating messages for the home screen, stable across a given day and
+// written for whoever is looking at the board.
+const HOME_MESSAGES = {
+  beth: [
+    "He's home — soak up every minute. 🤍",
+    "No flights on the board. Enjoy each other. 🤍",
+    "Grounded and right where he belongs. 🤍",
+    "Home sweet home. Make it count. 🤍",
+    "He's all yours today. 🤍",
+  ],
+  babea: [
+    "You're home — the best layover there is. 🤍",
+    "No flights on the board. Enjoy the days off. 🤍",
+    "Grounded, and right where you belong. 🤍",
+    "Home sweet home. Make it count. 🤍",
+    "Nowhere to be but here. 🤍",
+  ],
+};
+function homeMessage(now, who) {
+  const msgs = HOME_MESSAGES[who] || HOME_MESSAGES.beth;
   const start = new Date(now.getFullYear(), 0, 0);
   const doy = Math.floor((now - start) / 86400000);
-  return HOME_MESSAGES[doy % HOME_MESSAGES.length];
+  return msgs[doy % msgs.length];
 }
 
 // Whole days from a to b, by calendar day.
@@ -1540,9 +1558,13 @@ function landingPhrase(leg, statuses) {
 // `statuses` lets live data override the printed schedule (e.g. a flight that
 // landed early shouldn't still read as "in the air", and the in-air landing
 // time tracks FlightAware's live ETA rather than the printed arrival).
-function liveSummary(s, now, statuses) {
+// `who` is whose board this is: on Babe-a's own board the lines speak to him
+// ("You're in Denver"), on Beth's they speak about him.
+function liveSummary(s, now, statuses, who) {
+  const self = who === "babea";
+  const subj = self ? "You're" : "Babe-a is"; // "<subj> in Denver…"
   if (s.state === "home") {
-    return { word: "Home", line: "Babe-a is home right now." };
+    return { word: "Home", line: `${subj} home right now.` };
   }
   const sorted = s.sorted;
 
@@ -1553,11 +1575,11 @@ function liveSummary(s, now, statuses) {
       const from = leg.fromCity || leg.from;
       const to = leg.toCity || leg.to;
       const verb = isDeadhead(leg)
-        ? "is deadheading (riding as a passenger)"
-        : "is flying";
+        ? "deadheading (riding as a passenger)"
+        : "flying";
       return {
         word: "In the air",
-        line: `Babe-a ${verb} from ${from} to ${to}, ${landingPhrase(leg, statuses)}.`,
+        line: `${subj} ${verb} from ${from} to ${to}, ${landingPhrase(leg, statuses)}.`,
       };
     }
   }
@@ -1575,7 +1597,7 @@ function liveSummary(s, now, statuses) {
   if (past.length === 0) {
     return {
       word: "Trip ahead",
-      line: `Babe-a leaves ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
+      line: `${self ? "You leave" : "Babe-a leaves"} ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
     };
   }
 
@@ -1584,14 +1606,14 @@ function liveSummary(s, now, statuses) {
 
   // Landed at home with nothing else on the books: the trip is actually over.
   if (!next && lastLanded.to === HOME_AIRPORT) {
-    return { word: "Back home", line: "Babe-a is back home now." };
+    return { word: "Back home", line: `${subj} back home now.` };
   }
 
   // No more legs in hand yet. He's not home, so it's an overnight, not "back home."
   if (!next) {
     return {
       word: "Overnight",
-      line: `Babe-a is in ${place} on the overnight.`,
+      line: `${subj} in ${place} on the overnight.`,
     };
   }
 
@@ -1599,14 +1621,14 @@ function liveSummary(s, now, statuses) {
   if (dayLabel(next.date, now) === "Today") {
     return {
       word: "On the ground",
-      line: `Babe-a is in ${place} right now. Next flight in ${humanizeDuration(legDates(next).dep - now)}.`,
+      line: `${subj} in ${place} right now. Next flight in ${humanizeDuration(legDates(next).dep - now)}.`,
     };
   }
 
   // Last leg of the day is down; the next one isn't until a later day.
   return {
     word: "Overnight",
-    line: `Babe-a is in ${place} on the overnight. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
+    line: `${subj} in ${place} on the overnight. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
   };
 }
 
@@ -1780,6 +1802,7 @@ function hexToRgba(hex, a) {
 
 export default function App() {
   const [screen, setScreen] = useState("loading"); // loading | gate | viewer | admin
+  const [me, setMe] = useState(null); // { who: "babea" | "beth", canPublish }
   const [trip, setTrip] = useState(null);
   const [now, setNow] = useState(new Date());
   const [theme, setTheme] = useState(() => {
@@ -1871,15 +1894,15 @@ export default function App() {
     }
   }, [now, trip]);
 
+  // Everyone lands on their own board; Babe-a flips into the flight deck from
+  // there when there's a trip to publish.
   useEffect(() => {
     (async () => {
-      const role = await store.resume();
-      if (role === "view") {
+      const id = await store.resume();
+      if (id) {
+        setMe(id);
         await loadTrip();
         setScreen("viewer");
-      } else if (role === "admin") {
-        await loadTrip();
-        setScreen("admin");
       } else {
         setScreen("gate");
       }
@@ -1934,28 +1957,27 @@ export default function App() {
         {screen === "gate" && (
           <Gate
             resolve={async (v) => {
-              const role = await store.authenticate(v.trim());
-              if (role === "view") {
-                await loadTrip();
-                setScreen("viewer");
-                return true;
-              }
-              if (role === "admin") {
-                await loadTrip();
-                setScreen("admin");
-                return true;
-              }
-              return false;
+              const id = await store.authenticate(v.trim());
+              if (!id) return false;
+              setMe(id);
+              await loadTrip();
+              setScreen("viewer");
+              return true;
             }}
           />
         )}
 
         {screen === "viewer" && (
           <Viewer
+            me={me}
             trip={trip}
             now={now}
+            onFlightDeck={
+              me && me.canPublish ? () => setScreen("admin") : null
+            }
             onLock={() => {
               store.signOut();
+              setMe(null);
               setScreen("gate");
             }}
           />
@@ -1968,10 +1990,7 @@ export default function App() {
               setTrip(t);
               await loadTrip();
             }}
-            onExit={() => {
-              store.signOut();
-              setScreen("gate");
-            }}
+            onBoard={() => setScreen("viewer")}
           />
         )}
       </div>
@@ -2022,7 +2041,7 @@ function Gate({ resolve }) {
       <h1>
         Where's <em>Babe-a</em>?
       </h1>
-      <p>Enter your access code to see his status.</p>
+      <p>Enter your access code.</p>
       <div className="cs-field">
         <input
           className="cs-input"
@@ -2250,9 +2269,10 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
   );
 }
 
-// An opt-in / opt-out switch for push notifications (departures, landings, and
-// delays). It only shows when this browser can do push AND the server has push
-// configured, so it stays invisible rather than broken when either is missing.
+// An opt-in / opt-out switch for push notifications (departures, landings,
+// delays, and notes from the other person). It only shows when this browser can
+// do push AND the server has push configured, so it stays invisible rather
+// than broken when either is missing.
 // Turning it off unsubscribes this device and tells the server to forget it.
 function NotificationToggle() {
   const [show, setShow] = useState(false);
@@ -2321,7 +2341,8 @@ function NotificationToggle() {
         <div className="cs-notif-text">
           <div className="cs-notif-title">Notifications</div>
           <div className="cs-notif-sub">
-            Departures, landings &amp; delays for the current trip.
+            Departures, landings &amp; delays for the current trip, plus notes
+            left for you.
           </div>
         </div>
         <button
@@ -2341,12 +2362,12 @@ function NotificationToggle() {
   );
 }
 
-// "Good morning, Beth" at the very top of every screen, with the little
-// #4eva bubble floating alongside it.
-function Greeting({ now }) {
+// "Good morning, Beth" (or Babe-a) at the very top of every screen, with the
+// little #4eva bubble floating alongside it.
+function Greeting({ now, name }) {
   return (
     <div className="cs-greet">
-      {greetingWord(now)}, <span>Beth</span>
+      {greetingWord(now)}, <span>{name}</span>
       <div className="cs-4eva" aria-hidden="true">
         <span>#4eva</span>
       </div>
@@ -2393,17 +2414,29 @@ function StatusCard({ word, sub, countdown, special, now }) {
   );
 }
 
-// Lets Beth leave a short note that Babe-a sees in the admin.
-function BethNote({ initial }) {
+// Lets whoever is signed in leave a short note for the other person. Beth
+// writes noteFromBeth, Babe-a writes noteFromBabea.
+function NoteComposer({ me, initial }) {
+  const otherName = PEOPLE[PEOPLE[me.who].other].name;
+  const field = me.who === "beth" ? "noteFromBeth" : "noteFromBabea";
   const [text, setText] = useState(initial || "");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const dirty = text.trim() !== (initial || "").trim();
 
+  // The saved note arrives async (and refreshes with the board). Reflect it
+  // unless something is mid-edit, so typing never gets clobbered.
+  const lastInitial = useRef(initial || "");
+  useEffect(() => {
+    const next = initial || "";
+    setText((t) => (t.trim() === lastInitial.current.trim() ? next : t));
+    lastInitial.current = next;
+  }, [initial]);
+
   const save = async () => {
     setBusy(true);
     try {
-      await store.savePersonal({ bethNote: text.trim() });
+      await store.savePersonal({ [field]: text.trim() });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {}
@@ -2412,11 +2445,15 @@ function BethNote({ initial }) {
 
   return (
     <div className="cs-bethnote">
-      <div className="cs-bethnote-label">Leave a note for Babe-a</div>
+      <div className="cs-bethnote-label">Leave a note for {otherName}</div>
       <textarea
         className="cs-area"
         style={{ minHeight: 64 }}
-        placeholder="Fly safe — miss you already. 🤍"
+        placeholder={
+          me.who === "beth"
+            ? "Fly safe — miss you already. 🤍"
+            : "Long day — I'll call you when I land in Atlanta. 🤍"
+        }
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -2430,14 +2467,31 @@ function BethNote({ initial }) {
           disabled={busy || !dirty}
           style={{ padding: "10px 18px" }}
         >
-          {busy ? "Saving" : saved ? "Sent 🤍" : "Send to Babe-a"}
+          {busy ? "Saving" : saved ? "Sent 🤍" : `Send to ${otherName}`}
         </button>
       </div>
     </div>
   );
 }
 
-function Viewer({ trip, now, onLock }) {
+// The other person's latest note, set down in ink. Keyed by the text so a
+// fresh note replays the ink-in reveal.
+function NoteFromOther({ text, name }) {
+  if (!text) return null;
+  return (
+    <blockquote className="cs-note" key={text}>
+      <div className="body">{text}</div>
+      <div className="label">
+        — a note from {name}{" "}
+        <span className="cs-noteheart" aria-hidden="true">
+          ♥
+        </span>
+      </div>
+    </blockquote>
+  );
+}
+
+function Viewer({ me, trip, now, onFlightDeck, onLock }) {
   const s = useMemo(() => tripStatus(trip, now), [trip, now]);
   const [statuses, setStatuses] = useState({});
 
@@ -2515,47 +2569,74 @@ function Viewer({ trip, now, onLock }) {
     };
   }, [trip]);
 
-  // Personal record: Beth's note + special date.
-  const [personal, setPersonal] = useState({ bethNote: "", special: null });
+  // Personal record: both notes + special date. Re-pulled whenever the trip
+  // refreshes, so a new note from the other person shows up on its own.
+  const [personal, setPersonal] = useState({
+    noteFromBeth: "",
+    noteFromBabea: "",
+    special: null,
+  });
   useEffect(() => {
     let alive = true;
     (async () => {
       const p = await store.getPersonal();
-      if (alive) setPersonal(p || { bethNote: "", special: null });
+      if (alive && p) setPersonal(p);
     })();
     return () => {
       alive = false;
     };
   }, [trip]);
 
+  const myName = PEOPLE[me.who].name;
+  const otherName = PEOPLE[PEOPLE[me.who].other].name;
+  // The other person's note to me. Notes written before the identity change
+  // rode along on the trip record, so fall back to trip.note on Beth's board.
+  const noteToMe = (
+    me.who === "babea"
+      ? personal.noteFromBeth
+      : personal.noteFromBabea || (trip && trip.note) || ""
+  ).trim();
+  const myNote = me.who === "beth" ? personal.noteFromBeth : personal.noteFromBabea;
+
+  const foot = (
+    <div className="cs-foot">
+      {onFlightDeck ? (
+        <span className="cs-link" onClick={onFlightDeck}>
+          Flight deck
+        </span>
+      ) : (
+        <span />
+      )}
+      <span className="cs-link" onClick={onLock}>
+        Lock
+      </span>
+    </div>
+  );
+
   if (s.state === "home") {
     return (
       <div>
-        <Greeting now={now} />
+        <Greeting now={now} name={myName} />
         <StatusCard
           word="Home"
-          sub={homeMessage(now)}
+          sub={homeMessage(now, me.who)}
           special={personal.special}
           now={now}
         />
 
+        <NoteFromOther text={noteToMe} name={otherName} />
+
         <div className="cs-rule" />
 
-        <BethNote initial={personal.bethNote} />
+        <NoteComposer me={me} initial={myNote} />
 
-        <div className="cs-foot">
-          <span />
-          <span className="cs-link" onClick={onLock}>
-            Lock
-          </span>
-        </div>
+        {foot}
       </div>
     );
   }
 
-  const summary = liveSummary(s, now, statuses);
+  const summary = liveSummary(s, now, statuses, me.who);
   const countdown = homeCountdown(s, now);
-  const note = (trip && trip.note ? trip.note : "").trim();
 
   // The leg in the air right now, hoisted to the top for quick access. A leg
   // that has actually landed (per live data) no longer counts, even if its
@@ -2570,7 +2651,7 @@ function Viewer({ trip, now, onLock }) {
 
   return (
     <div>
-      <Greeting now={now} />
+      <Greeting now={now} name={myName} />
       <StatusCard
         word={summary.word}
         sub={summary.line}
@@ -2595,18 +2676,7 @@ function Viewer({ trip, now, onLock }) {
         </div>
       )}
 
-      {note && (
-        /* keyed by the text so a fresh note replays the ink-in reveal */
-        <blockquote className="cs-note" key={note}>
-          <div className="body">{note}</div>
-          <div className="label">
-            — a note from Babe-a{" "}
-            <span className="cs-noteheart" aria-hidden="true">
-              ♥
-            </span>
-          </div>
-        </blockquote>
-      )}
+      <NoteFromOther text={noteToMe} name={otherName} />
 
       <div className="cs-rule" />
 
@@ -2704,41 +2774,42 @@ function Viewer({ trip, now, onLock }) {
         });
       })()}
 
-      <BethNote initial={personal.bethNote} />
+      <NoteComposer me={me} initial={myNote} />
 
-      <div className="cs-foot">
-        <span />
-        <span className="cs-link" onClick={onLock}>
-          Lock
-        </span>
-      </div>
+      {foot}
     </div>
   );
 }
 
-function Admin({ trip, onPublish, onExit }) {
+function Admin({ trip, onPublish, onBoard }) {
   const [raw, setRaw] = useState("");
   const [legs, setLegs] = useState(trip?.legs ? [...trip.legs] : []);
-  const [noteText, setNoteText] = useState(trip?.note || "");
+  const [noteText, setNoteText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [showManual, setShowManual] = useState(false);
 
-  // Personal: Beth's incoming note, and the special-date countdown Babe-a sets.
-  const [bethNote, setBethNote] = useState("");
+  // Personal: Beth's incoming note, the outgoing note to her, and the
+  // special-date countdown Babe-a sets. The note to Beth lives in the personal
+  // record (not on the trip), so it survives a trip being cleared; notes
+  // written before that change rode on the trip, hence the fallback.
+  const [noteFromBeth, setNoteFromBeth] = useState("");
   const [special, setSpecial] = useState({ date: "", label: "" });
   const [specialMsg, setSpecialMsg] = useState("");
   useEffect(() => {
     (async () => {
       const p = await store.getPersonal();
-      setBethNote(p.bethNote || "");
+      setNoteFromBeth(p.noteFromBeth || "");
+      setNoteText(p.noteFromBabea || trip?.note || "");
       if (p.special)
         setSpecial({
           date: p.special.date || "",
           label: p.special.label || "",
         });
     })();
+    // Loads once on mount; the trip fallback is only for the pre-change shape.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveSpecial = async () => {
@@ -2820,11 +2891,13 @@ function Admin({ trip, onPublish, onExit }) {
     setBusy(true);
     const t = {
       legs,
-      note: noteText.trim(),
       updatedAt: new Date().toISOString(),
     };
     try {
       await store.saveTrip(t);
+      // The note travels separately so it outlives the trip; saving it here
+      // (when changed) also pings Beth's devices.
+      await store.savePersonal({ noteFromBabea: noteText.trim() });
       await onPublish(t);
       const s = tripStatus(t, new Date());
       if (s.state === "home") {
@@ -2848,14 +2921,13 @@ function Admin({ trip, onPublish, onExit }) {
 
   const clearBoard = async () => {
     setBusy(true);
-    const t = { legs: [], note: "", updatedAt: new Date().toISOString() };
+    const t = { legs: [], updatedAt: new Date().toISOString() };
     try {
       await store.saveTrip(t);
       await onPublish(t);
       setLegs([]);
       setRaw("");
-      setNoteText("");
-      setNote("Board cleared. Shows as Home.");
+      setNote("Board cleared. Shows as Home. Your note to Beth stays up.");
     } catch {
       setNote("Could not save. Try again.");
     }
@@ -3042,10 +3114,10 @@ function Admin({ trip, onPublish, onExit }) {
 
       {note && <div className="cs-saved">{note}</div>}
 
-      {bethNote ? (
+      {noteFromBeth ? (
         <div className="cs-note" style={{ marginTop: 28 }}>
           <div className="label">A note from Beth</div>
-          <div className="body">{bethNote}</div>
+          <div className="body">{noteFromBeth}</div>
         </div>
       ) : null}
 
@@ -3079,8 +3151,8 @@ function Admin({ trip, onPublish, onExit }) {
 
       <div className="cs-foot">
         <span />
-        <span className="cs-link" onClick={onExit}>
-          Exit
+        <span className="cs-link" onClick={onBoard}>
+          Back to your board
         </span>
       </div>
     </div>
