@@ -7,7 +7,7 @@ import * as push from "./lib/push.js";
 // the browser anymore.
 
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@1,400;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Cinzel:wght@400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@1,400;1,500&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18,9 +18,14 @@ const css = `
   --line: rgba(20,18,16,0.16);
   --text: #1b1a18;
   --muted: #524c45;
-  --faint: #6e675f;
+  --faint: #5c554c;
   --crimson: #be2639;
   --crimson-dim: rgba(190,38,57,0.10);
+  /* status-word tones: home / in the air / running late / away overnight */
+  --tone-home: #256b45;
+  --tone-air: #1f6f9f;
+  --tone-late: #a86400;
+  --tone-away: #66589e;
   min-height: 100vh;
   background: var(--ink);
   color: var(--text);
@@ -40,9 +45,13 @@ const css = `
   --line: rgba(244,241,236,0.14);
   --text: #f4f1ec;
   --muted: #c2bab0;
-  --faint: #8c857b;
+  --faint: #9d968c;
   --crimson: #ef5564;
   --crimson-dim: rgba(239,85,100,0.16);
+  --tone-home: #79c99b;
+  --tone-air: #82c5e8;
+  --tone-late: #e5b055;
+  --tone-away: #b4a7e2;
 }
 .cs-root.dark .cs-leg.active { background: rgba(239,85,100,0.12); }
 .cs-root.dark .cs-saved { color: #4cc47e; }
@@ -167,7 +176,14 @@ const css = `
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--surface);
+  /* a soft wash of the chosen accent, so "your color" shows up somewhere
+     bigger than the swatch row */
+  background-image: linear-gradient(150deg, var(--crimson-dim), transparent 55%);
 }
+.cs-card-word.tone-home { color: var(--tone-home); }
+.cs-card-word.tone-air { color: var(--tone-air); }
+.cs-card-word.tone-late { color: var(--tone-late); }
+.cs-card-word.tone-away { color: var(--tone-away); }
 .cs-card-word {
   font-family: 'Cinzel', 'Cormorant Garamond', Georgia, serif;
   font-size: 34px;
@@ -211,7 +227,7 @@ const css = `
 .cs-chip-icon { color: var(--crimson); font-size: 15px; }
 .cs-chip-tag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -244,10 +260,10 @@ const css = `
   animation: noteink 0.7s cubic-bezier(0.2,0.7,0.2,1) forwards;
 }
 .cs-note .body {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 23px;
-  line-height: 1.4;
-  font-style: italic;
+  /* handwritten, like a real note left on the counter */
+  font-family: 'Caveat', 'Cormorant Garamond', cursive;
+  font-size: 28px;
+  line-height: 1.25;
   color: var(--text);
 }
 .cs-note .body,
@@ -257,8 +273,8 @@ const css = `
 }
 .cs-note .label {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.16em;
+  font-size: 13px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--faint);
   margin-top: 9px;
@@ -441,7 +457,7 @@ const css = `
   right: -6px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1;
 }
 .cs-prog-meta {
@@ -450,7 +466,7 @@ const css = `
   align-items: center;
   gap: 8px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   color: var(--faint);
 }
@@ -650,8 +666,8 @@ const css = `
 .cs-bethnote { margin-top: 30px; }
 .cs-bethnote-label {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-size: 13px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--faint);
   margin-bottom: 8px;
@@ -662,6 +678,8 @@ const css = `
   align-items: center;
   gap: 12px;
 }
+/* the send button never wraps mid-name; the aside takes the leftover room */
+.cs-bethnote-row .cs-btn { white-space: nowrap; flex-shrink: 0; }
 /* when your saved note went out, sitting quietly beside the send button */
 .cs-bethnote-when {
   font-family: 'Cormorant Garamond', Georgia, serif;
@@ -680,11 +698,34 @@ const css = `
 }
 .cs-accent-label {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--faint);
 }
+
+/* text size: A / A+ / A++, mirroring the accent row */
+.cs-textsize {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+.cs-ts-btn {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 40px;
+  min-height: 40px;
+  cursor: pointer;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs-ts-btn.sel { border-color: var(--crimson); color: var(--crimson); }
+
 .cs-swatch {
   width: 20px;
   height: 20px;
@@ -915,12 +956,64 @@ a.cs-flight:hover, a.cs-flight:active { color: var(--crimson); border-bottom-col
   justify-content: space-between;
   align-items: center;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12.5px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   color: var(--faint);
 }
 .cs-link { color: var(--faint); cursor: pointer; text-decoration: none; }
 .cs-link:hover { color: var(--muted); }
+/* footer actions are pills, not bare words — easy for thumbs */
+.cs-foot .cs-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.cs-foot .cs-link:hover { border-color: var(--crimson); color: var(--crimson); }
+
+/* the quiet freshness whisper under the board */
+.cs-updated {
+  margin-top: 26px;
+  text-align: center;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--faint);
+}
+
+/* earlier notes, tucked away until asked for */
+.cs-note-thread { margin-top: 14px; padding-left: 16px; }
+.cs-note-thread summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.cs-note-thread summary::-webkit-details-marker { display: none; }
+.cs-note-thread summary .cs-help-chevron { margin-left: 6px; }
+.cs-note-thread[open] .cs-help-chevron { transform: rotate(90deg); }
+.cs-note-thread-item { margin-top: 12px; }
+.cs-note-thread-item .txt {
+  font-family: 'Caveat', 'Cormorant Garamond', cursive;
+  font-size: 22px;
+  line-height: 1.25;
+  color: var(--muted);
+}
+.cs-note-thread-item .when {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-top: 2px;
+}
 
 /* ---- admin ---- */
 .cs-admin h2 { font-size: 34px; font-weight: 500; margin-bottom: 4px; }
@@ -1611,7 +1704,7 @@ function liveSummary(s, now, statuses, who) {
   const self = who === "babea";
   const subj = self ? "You're" : "Babe-a is"; // "<subj> in Denver…"
   if (s.state === "home") {
-    return { word: "Home", line: `${subj} home right now.` };
+    return { word: "Home", tone: "home", line: `${subj} home right now.` };
   }
   const sorted = s.sorted;
 
@@ -1624,8 +1717,14 @@ function liveSummary(s, now, statuses, who) {
       const verb = isDeadhead(leg)
         ? "deadheading (riding as a passenger)"
         : "flying";
+      // Amber when live data says the arrival is running meaningfully late,
+      // matching the ±15-minute threshold used everywhere else.
+      const st = statuses && statuses[legStatusKey(leg)];
+      const late =
+        st && typeof st.arrivalDelay === "number" && st.arrivalDelay >= 15 * 60;
       return {
         word: "In the air",
+        tone: late ? "late" : "air",
         line: `${subj} ${verb} from ${from} to ${to}, ${landingPhrase(leg, statuses)}.`,
       };
     }
@@ -1644,6 +1743,7 @@ function liveSummary(s, now, statuses, who) {
   if (past.length === 0) {
     return {
       word: "Trip ahead",
+      tone: null,
       line: `${self ? "You leave" : "Babe-a leaves"} ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
     };
   }
@@ -1653,13 +1753,14 @@ function liveSummary(s, now, statuses, who) {
 
   // Landed at home with nothing else on the books: the trip is actually over.
   if (!next && lastLanded.to === HOME_AIRPORT) {
-    return { word: "Back home", line: `${subj} back home now.` };
+    return { word: "Back home", tone: "home", line: `${subj} back home now.` };
   }
 
   // No more legs in hand yet. He's not home, so it's an overnight, not "back home."
   if (!next) {
     return {
       word: "Overnight",
+      tone: "away",
       line: `${subj} in ${place} on the overnight.`,
     };
   }
@@ -1668,6 +1769,7 @@ function liveSummary(s, now, statuses, who) {
   if (dayLabel(next.date, now) === "Today") {
     return {
       word: "On the ground",
+      tone: "away",
       line: `${subj} in ${place} right now. Next flight in ${humanizeDuration(legDates(next).dep - now)}.`,
     };
   }
@@ -1675,6 +1777,7 @@ function liveSummary(s, now, statuses, who) {
   // Last leg of the day is down; the next one isn't until a later day.
   return {
     word: "Overnight",
+    tone: "away",
     line: `${subj} in ${place} on the overnight. Next flight ${whenWord(next.date, now)} at ${fmtTime(next.depart)}.`,
   };
 }
@@ -1889,6 +1992,21 @@ export default function App() {
       localStorage.setItem("cs-accent", accent);
     } catch {}
   }, [accent]);
+  // Text size: a per-device zoom so everything gets bigger with one tap.
+  // Saved like the theme and accent, so it sticks on Beth's phone.
+  const [textSize, setTextSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cs-textsize");
+      if (saved === "1" || saved === "1.15" || saved === "1.3") return saved;
+    } catch {}
+    return "1";
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("cs-textsize", textSize);
+    } catch {}
+  }, [textSize]);
+
   const accentObj = ACCENTS.find((a) => a.id === accent) || ACCENTS[0];
   // Default crimson uses no override so dark mode keeps its tuned shade.
   const rootStyle =
@@ -1918,10 +2036,14 @@ export default function App() {
     return t;
   };
 
+  // When the board last heard from the server, for the freshness whisper.
+  const [refreshedAt, setRefreshedAt] = useState(null);
+
   const loadTrip = async () => {
     try {
       const t = await store.getTrip();
       setTrip(await expireIfDue(t));
+      setRefreshedAt(new Date());
     } catch {
       setTrip(null);
     }
@@ -1996,7 +2118,7 @@ export default function App() {
   return (
     <div
       className={`cs-root ${theme === "dark" ? "dark" : ""}`}
-      style={rootStyle}
+      style={{ ...rootStyle, zoom: textSize }}
     >
       <style>{css}</style>
       <ThemeToggle theme={theme} onToggle={toggleTheme} />
@@ -2019,6 +2141,7 @@ export default function App() {
             me={me}
             trip={trip}
             now={now}
+            refreshedAt={refreshedAt}
             onFlightDeck={
               me && me.canPublish ? () => setScreen("admin") : null
             }
@@ -2043,6 +2166,24 @@ export default function App() {
       </div>
       <footer className="cs-credit">
         {(screen === "viewer" || screen === "admin") && <NotificationToggle />}
+        <div className="cs-textsize">
+          <span className="cs-accent-label">Text size</span>
+          {[
+            ["1", 15],
+            ["1.15", 19],
+            ["1.3", 23],
+          ].map(([v, px]) => (
+            <button
+              key={v}
+              className={`cs-ts-btn ${textSize === v ? "sel" : ""}`}
+              style={{ fontSize: px }}
+              onClick={() => setTextSize(v)}
+              aria-label={`Text size ${v === "1" ? "normal" : v === "1.15" ? "large" : "largest"}`}
+            >
+              A
+            </button>
+          ))}
+        </div>
         <div className="cs-accent">
           <span className="cs-accent-label">Your color</span>
           {ACCENTS.map((a) => (
@@ -2426,13 +2567,13 @@ function Greeting({ now, name }) {
 // a one-line plain-language answer, and a meta row of small chips for the
 // at-a-glance facts — when he's home again, and any special shared date
 // Babe-a set in the admin. Chips are omitted when there's nothing to show.
-function StatusCard({ word, sub, countdown, special, now }) {
+function StatusCard({ word, tone, sub, countdown, special, now }) {
   const specialWords =
     special && special.date ? untilWords(special.date, now) : null;
   const hasMeta = countdown || specialWords;
   return (
     <div className="cs-card">
-      <div className="cs-card-word">{word}</div>
+      <div className={`cs-card-word${tone ? ` tone-${tone}` : ""}`}>{word}</div>
       <div className="cs-card-sub">{sub}</div>
       {hasMeta && (
         <div className="cs-card-meta">
@@ -2465,7 +2606,7 @@ function StatusCard({ word, sub, countdown, special, now }) {
 // writes noteFromBeth, Babe-a writes noteFromBabea. `sentAt` is when the saved
 // note went out; a quiet "Sent this morning" sits beside the button so you
 // know your note is up without re-reading it.
-function NoteComposer({ me, initial, sentAt, now }) {
+function NoteComposer({ me, initial, sentAt, seenAt, now }) {
   const otherName = PEOPLE[PEOPLE[me.who].other].name;
   const field = me.who === "beth" ? "noteFromBeth" : "noteFromBabea";
   const [text, setText] = useState(initial || "");
@@ -2515,6 +2656,8 @@ function NoteComposer({ me, initial, sentAt, now }) {
         ? sentAt
         : null;
   const sentWord = text.trim() ? noteWhenWord(sentAtEff, now) : "";
+  // Their board displayed this exact note (a fresh send hasn't been seen yet).
+  const seen = !!(seenAt && sentAtEff && seenAt >= sentAtEff);
 
   return (
     <div className="cs-bethnote">
@@ -2543,7 +2686,10 @@ function NoteComposer({ me, initial, sentAt, now }) {
           {busy ? "Saving" : saved ? "Sent 🤍" : `Send to ${otherName}`}
         </button>
         {sentWord ? (
-          <span className="cs-bethnote-when">Sent {sentWord}</span>
+          <span className="cs-bethnote-when">
+            Sent {sentWord}
+            {seen ? ` · seen by ${otherName} 🤍` : ""}
+          </span>
         ) : null}
       </div>
     </div>
@@ -2570,7 +2716,30 @@ function NoteFromOther({ text, name, at, now }) {
   );
 }
 
-function Viewer({ me, trip, now, onFlightDeck, onLock }) {
+// The other person's earlier notes, tucked into a fold below the current one.
+function NoteThread({ items, name, now }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <details className="cs-note-thread">
+      <summary>
+        Earlier notes from {name}
+        <span className="cs-help-chevron" aria-hidden="true">
+          ▸
+        </span>
+      </summary>
+      {items.map((h, i) => (
+        <div className="cs-note-thread-item" key={`${h.at || ""}-${i}`}>
+          <div className="txt">{h.text}</div>
+          {noteWhenWord(h.at, now) ? (
+            <div className="when">{noteWhenWord(h.at, now)}</div>
+          ) : null}
+        </div>
+      ))}
+    </details>
+  );
+}
+
+function Viewer({ me, trip, now, refreshedAt, onFlightDeck, onLock }) {
   const s = useMemo(() => tripStatus(trip, now), [trip, now]);
   const [statuses, setStatuses] = useState({});
 
@@ -2653,8 +2822,12 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
   const [personal, setPersonal] = useState({
     noteFromBeth: "",
     noteFromBethAt: null,
+    noteFromBethSeenAt: null,
     noteFromBabea: "",
     noteFromBabeaAt: null,
+    noteFromBabeaSeenAt: null,
+    notesFromBeth: [],
+    notesFromBabea: [],
     special: null,
   });
   useEffect(() => {
@@ -2669,7 +2842,8 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
   }, [trip]);
 
   const myName = PEOPLE[me.who].name;
-  const otherName = PEOPLE[PEOPLE[me.who].other].name;
+  const otherWho = PEOPLE[me.who].other;
+  const otherName = PEOPLE[otherWho].name;
   // The other person's note to me. Notes written before the identity change
   // rode along on the trip record, so fall back to trip.note on Beth's board.
   const noteToMe = (
@@ -2687,6 +2861,58 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
   const myNote = me.who === "beth" ? personal.noteFromBeth : personal.noteFromBabea;
   const myNoteAt =
     me.who === "beth" ? personal.noteFromBethAt : personal.noteFromBabeaAt;
+  // When the other person's board displayed MY note (for the "seen" mark).
+  const myNoteSeenAt =
+    me.who === "beth"
+      ? personal.noteFromBethSeenAt
+      : personal.noteFromBabeaSeenAt;
+
+  // Reading their note marks it seen, once per note, only while the tab is
+  // actually being looked at.
+  const theirSeenAt =
+    otherWho === "beth"
+      ? personal.noteFromBethSeenAt
+      : personal.noteFromBabeaSeenAt;
+  const seenMarked = useRef(null);
+  useEffect(() => {
+    if (!noteToMe || !noteToMeAt) return;
+    if (theirSeenAt && theirSeenAt >= noteToMeAt) return;
+    if (seenMarked.current === noteToMeAt) return;
+    if (document.visibilityState !== "visible") return;
+    seenMarked.current = noteToMeAt;
+    store.markNoteSeen(otherWho);
+  }, [noteToMe, noteToMeAt, theirSeenAt, otherWho]);
+
+  // Their earlier notes, beyond the one on display.
+  const threadItems = (
+    (otherWho === "beth" ? personal.notesFromBeth : personal.notesFromBabea) ||
+    []
+  )
+    .filter((h) => h && h.text && h.text !== noteToMe)
+    .slice(0, 5);
+
+  // "How to read this" opens itself the very first visit, then stays put.
+  const [helpOpen] = useState(() => {
+    try {
+      return !localStorage.getItem("cs-help-seen");
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("cs-help-seen", "1");
+    } catch {}
+  }, []);
+
+  const updatedWord = refreshedAt
+    ? (() => {
+        const mins = Math.round((now - refreshedAt) / 60000);
+        if (mins < 2) return "just now";
+        if (mins < 60) return `${mins} minutes ago`;
+        return "over an hour ago";
+      })()
+    : "";
 
   const foot = (
     <div className="cs-foot">
@@ -2709,17 +2935,26 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
         <Greeting now={now} name={myName} />
         <StatusCard
           word="Home"
+          tone="home"
           sub={homeMessage(now, me.who)}
           special={personal.special}
           now={now}
         />
 
         <NoteFromOther text={noteToMe} name={otherName} at={noteToMeAt} now={now} />
+        <NoteThread items={threadItems} name={otherName} now={now} />
 
         <div className="cs-rule" />
 
-        <NoteComposer me={me} initial={myNote} sentAt={myNoteAt} now={now} />
+        <NoteComposer
+          me={me}
+          initial={myNote}
+          sentAt={myNoteAt}
+          seenAt={myNoteSeenAt}
+          now={now}
+        />
 
+        {updatedWord && <div className="cs-updated">Updated {updatedWord}</div>}
         {foot}
       </div>
     );
@@ -2744,6 +2979,7 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
       <Greeting now={now} name={myName} />
       <StatusCard
         word={summary.word}
+        tone={summary.tone}
         sub={summary.line}
         countdown={countdown}
         special={personal.special}
@@ -2767,10 +3003,11 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
       )}
 
       <NoteFromOther text={noteToMe} name={otherName} at={noteToMeAt} now={now} />
+      <NoteThread items={threadItems} name={otherName} now={now} />
 
       <div className="cs-rule" />
 
-      <details className="cs-help">
+      <details className="cs-help" open={helpOpen}>
         <summary className="cs-help-summary">
           How to read this
           <span className="cs-help-chevron" aria-hidden="true">
@@ -2864,8 +3101,15 @@ function Viewer({ me, trip, now, onFlightDeck, onLock }) {
         });
       })()}
 
-      <NoteComposer me={me} initial={myNote} sentAt={myNoteAt} now={now} />
+      <NoteComposer
+        me={me}
+        initial={myNote}
+        sentAt={myNoteAt}
+        seenAt={myNoteSeenAt}
+        now={now}
+      />
 
+      {updatedWord && <div className="cs-updated">Updated {updatedWord}</div>}
       {foot}
     </div>
   );

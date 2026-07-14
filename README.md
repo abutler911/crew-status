@@ -20,9 +20,13 @@ If you are developing a production application, we recommend using TypeScript wi
 The two access codes identify people, not permission levels: Babe-a's code
 (`ADMIN_CODE`) opens his own personalized board plus the flight-deck screen for
 publishing trips; Beth's code (`VIEW_CODE`) opens her board. Each board greets
-its own person, shows the other person's latest note, and has a composer to
-send a note back. Notes live in the shared `personal` record (Netlify Blobs) so
-they survive a trip being cleared or republished.
+its own person, shows the other person's latest note (with earlier notes in a
+fold beneath it), and has a composer to send a note back. Notes live in the
+shared `personal` record (Netlify Blobs) so they survive a trip being cleared
+or republished; the record also keeps a short history per direction and a
+"seen" time set when the other person's board displays a note. A per-device
+text-size control (A / A⁺ / A⁺⁺) lives in the footer alongside the theme and
+accent choices.
 
 ## Push notifications
 

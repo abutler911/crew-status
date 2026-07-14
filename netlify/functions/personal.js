@@ -1,13 +1,18 @@
 // Personal touches shared between Beth and Babe-a.
-// GET  /api/personal  -> { noteFromBeth, noteFromBabea, special }   (either person)
+// GET  /api/personal  -> the whole record below   (either person)
 // POST /api/personal  -> update fields
-//     Beth's code    can set { noteFromBeth }    (her note to Babe-a)
-//     Babe-a's code  can set { noteFromBabea }   (his note to Beth)
-//                    and     { special }         ({ date, label } | null)
+//     Beth's code    can set { noteFromBeth }         (her note to Babe-a)
+//                    and     { sawNoteFrom: "babea" } (she read his note)
+//     Babe-a's code  can set { noteFromBabea }        (his note to Beth)
+//                    and     { sawNoteFrom: "beth" }  (he read her note)
+//                    and     { special }              ({ date, label } | null)
 //
 // Notes live here rather than on the trip record so they survive a trip being
 // cleared or republished. When a note actually changes, the other person's
 // subscribed devices get a push so the message is seen without opening the app.
+// Each changed note is also kept in a short history (notesFromBeth /
+// notesFromBabea, newest first) so the boards can show the last few, and
+// noteFrom*SeenAt records when the other person's board displayed it.
 //
 // Stored as a single small record in Netlify Blobs. The caller sends its code
 // in the "x-access-code" header.
@@ -18,6 +23,7 @@ import { fanOut, pushConfigured } from "../lib/push-fanout.js";
 
 const KEY = "personal";
 const NOTE_MAX = 280;
+const HISTORY_MAX = 6;
 
 function norm(s) {
   return (s || "").replace(/\s+/g, "").toLowerCase();
@@ -40,13 +46,25 @@ async function read(store) {
     data = await store.get(KEY, { type: "json" });
   } catch {}
   const d = data && typeof data === "object" ? data : {};
-  return {
+  const out = {
     noteFromBeth: d.noteFromBeth || d.bethNote || "",
     noteFromBethAt: d.noteFromBethAt || null,
+    noteFromBethSeenAt: d.noteFromBethSeenAt || null,
     noteFromBabea: d.noteFromBabea || "",
     noteFromBabeaAt: d.noteFromBabeaAt || null,
+    noteFromBabeaSeenAt: d.noteFromBabeaSeenAt || null,
+    notesFromBeth: Array.isArray(d.notesFromBeth) ? d.notesFromBeth : [],
+    notesFromBabea: Array.isArray(d.notesFromBabea) ? d.notesFromBabea : [],
     special: d.special || null,
   };
+  // A note from before histories existed becomes the first history entry.
+  if (out.noteFromBeth && out.notesFromBeth.length === 0) {
+    out.notesFromBeth = [{ text: out.noteFromBeth, at: out.noteFromBethAt }];
+  }
+  if (out.noteFromBabea && out.notesFromBabea.length === 0) {
+    out.notesFromBabea = [{ text: out.noteFromBabea, at: out.noteFromBabeaAt }];
+  }
+  return out;
 }
 
 export default async (req) => {
@@ -74,13 +92,21 @@ export default async (req) => {
     };
 
     // Each person writes their own note, never the other's. A change to the
-    // text re-stamps its time; clearing the note clears the time with it.
+    // text re-stamps its time, resets the seen mark, and joins the history;
+    // clearing the note clears the time (its history entries remain).
     if (who === "beth" && typeof body.noteFromBeth === "string") {
       data.noteFromBeth = body.noteFromBeth.slice(0, NOTE_MAX);
       if (data.noteFromBeth !== before.noteFromBeth) {
         data.noteFromBethAt = data.noteFromBeth
           ? new Date().toISOString()
           : null;
+        data.noteFromBethSeenAt = null;
+        if (data.noteFromBeth) {
+          data.notesFromBeth = [
+            { text: data.noteFromBeth, at: data.noteFromBethAt },
+            ...data.notesFromBeth,
+          ].slice(0, HISTORY_MAX);
+        }
       }
     }
     if (who === "babea" && typeof body.noteFromBabea === "string") {
@@ -89,7 +115,23 @@ export default async (req) => {
         data.noteFromBabeaAt = data.noteFromBabea
           ? new Date().toISOString()
           : null;
+        data.noteFromBabeaSeenAt = null;
+        if (data.noteFromBabea) {
+          data.notesFromBabea = [
+            { text: data.noteFromBabea, at: data.noteFromBabeaAt },
+            ...data.notesFromBabea,
+          ].slice(0, HISTORY_MAX);
+        }
       }
+    }
+
+    // Reading the other person's note: their note gets a seen time. Only the
+    // reader can mark it — you can't mark your own note as seen.
+    if (body.sawNoteFrom === "beth" && who === "babea" && data.noteFromBeth) {
+      data.noteFromBethSeenAt = new Date().toISOString();
+    }
+    if (body.sawNoteFrom === "babea" && who === "beth" && data.noteFromBabea) {
+      data.noteFromBabeaSeenAt = new Date().toISOString();
     }
 
     // Only Babe-a sets the special-date countdown.
