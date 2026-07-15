@@ -34,29 +34,64 @@ export function addDays(dateStr, n) {
   return d.toISOString().slice(0, 10);
 }
 
-// Picks the AeroAPI flight that best matches a leg: same origin airport, and
-// the scheduled-out date closest to the leg's date. Guards against AeroAPI
-// returning several days of the same flight number.
+// "YYYY-MM-DD" for a UTC instant as seen in an IANA timezone, or null if the
+// zone string is unusable. en-CA formats as ISO.
+function localDateAt(epochMs, tz) {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(epochMs);
+  } catch {
+    return null;
+  }
+}
+
+// Picks the AeroAPI flight that best matches a leg. AeroAPI returns several
+// days of the same flight number, and leg.date/leg.depart are origin-local, so
+// UTC-date proximity alone picks the wrong day for evening departures (a 9 PM
+// MDT departure is 3 AM UTC the *next* day — closer to the previous day's
+// instance). Match on the origin-local calendar date instead, using the
+// timezone AeroAPI reports for the origin airport; fall back to time proximity
+// only when no candidate's local date lines up.
 export function pickFlight(flights, leg) {
   if (!Array.isArray(flights) || flights.length === 0) return null;
   const from = (leg.from || "").toUpperCase();
-  const target = new Date(leg.date + "T12:00:00Z").getTime();
-  let best = null;
-  let bestScore = Infinity;
+  // Proximity target: the leg's local departure clock treated as UTC. The
+  // zone offset shifts every candidate's score equally across days, so the
+  // right day still scores lowest — unlike the old noon-UTC anchor.
+  const hhmm = /^\d{2}:\d{2}$/.test(leg.depart || "") ? leg.depart : "12:00";
+  const target = new Date(`${leg.date}T${hhmm}:00Z`).getTime();
+
+  const sameLocalDate = [];
+  const unknownDate = [];
   for (const f of flights) {
     const origin = f.origin || {};
     const oc = (origin.code_iata || origin.code || "").toUpperCase();
     if (from && oc && oc !== from) continue;
     const sched = f.scheduled_out || f.estimated_out || f.scheduled_off;
     if (!sched) continue;
-    const score = Math.abs(new Date(sched).getTime() - target);
-    if (score < bestScore) {
-      bestScore = score;
-      best = f;
-    }
+    const at = new Date(sched).getTime();
+    const localDate = origin.timezone ? localDateAt(at, origin.timezone) : null;
+    // A flight known to depart on a different local calendar day is a
+    // different day's instance — never a fallback candidate.
+    if (localDate && localDate !== leg.date) continue;
+    const cand = { f, score: Math.abs(at - target) };
+    (localDate ? sameLocalDate : unknownDate).push(cand);
   }
-  // Only trust the match if it lands within ~1.5 days of the leg's date.
-  if (best && bestScore <= 1.5 * 86400000) return best;
+
+  const pool = sameLocalDate.length > 0 ? sameLocalDate : unknownDate;
+  let best = null;
+  for (const c of pool) {
+    if (!best || c.score < best.score) best = c;
+  }
+  if (!best) return null;
+  // A local-date match is trusted outright. Without timezone info, only trust
+  // a candidate within 12h of the target: the right day's flight always is
+  // (its score is just the zone offset), while any other day's is 24h off it.
+  if (sameLocalDate.length > 0 || best.score < 12 * 3600000) return best.f;
   return null;
 }
 
