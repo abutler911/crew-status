@@ -28,10 +28,17 @@ function legKeyOf(leg) {
   return `${leg.flight}|${leg.date}`;
 }
 
+// Bump to discard saved notification state on deploy. v2: the old flight
+// matcher could mark a leg departed off the previous day's flight, which
+// would swallow the real departure event; stale flags like that must go.
+const STATE_VERSION = 2;
+
 // A signature of the trip's legs, so we can tell when the trip itself changed
 // (a new trip, edited times) and reset notification state.
 function tripSignature(legs) {
-  const basis = legs.map((l) => `${l.flight}|${l.date}|${l.depart}|${l.arrive}`).join(";");
+  const basis =
+    `v${STATE_VERSION};` +
+    legs.map((l) => `${l.flight}|${l.date}|${l.depart}|${l.arrive}`).join(";");
   return createHash("sha256").update(basis).digest("hex").slice(0, 16);
 }
 
