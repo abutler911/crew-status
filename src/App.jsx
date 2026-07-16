@@ -977,6 +977,38 @@ const css = `
   color: var(--faint);
 }
 
+/* per-leg controls in the flight-deck preview */
+.cs-legedit {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.cs-dh-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs-dh-chip:hover { color: var(--text); border-color: var(--muted); }
+.cs-dh-chip.on {
+  color: var(--crimson);
+  border: 1px solid var(--crimson);
+  background: var(--crimson-dim);
+}
+
 .cs-legtop {
   display: flex;
   justify-content: space-between;
@@ -3707,6 +3739,40 @@ function Admin({ trip, onPublish, onBoard }) {
   };
   const removeLeg = (i) => setLegs((l) => l.filter((_, idx) => idx !== i));
 
+  // The deadhead tag is just a "DH " prefix on the flight, so a mis-parse is
+  // fixed by flipping it here rather than re-entering the whole leg.
+  const toggleDeadhead = (i) =>
+    setLegs((l) =>
+      l.map((leg, idx) =>
+        idx === i
+          ? {
+              ...leg,
+              flight: isDeadhead(leg)
+                ? flightNumber(leg.flight)
+                : "DH " + flightNumber(leg.flight),
+            }
+          : leg,
+      ),
+    );
+
+  // Load a leg into the manual form to correct a field; "Add leg" puts it
+  // back. The board sorts by time, so its position in this list is cosmetic.
+  const editLeg = (i) => {
+    const leg = legs[i];
+    setDraft({
+      date: leg.date || "",
+      flight: leg.flight || "",
+      from: leg.from || "",
+      fromCity: leg.fromCity || "",
+      to: leg.to || "",
+      toCity: leg.toCity || "",
+      depart: leg.depart || "",
+      arrive: leg.arrive || "",
+    });
+    setShowManual(true);
+    removeLeg(i);
+  };
+
   const publish = async () => {
     setBusy(true);
     const t = {
@@ -3791,7 +3857,7 @@ function Admin({ trip, onPublish, onBoard }) {
           {legs.map((leg, i) => (
             <div className="cs-leg flown done" key={i} style={{ opacity: 1 }}>
               <div className="cs-legtop">
-                <span className="cs-flight">{leg.flight}</span>
+                <span className="cs-flight">{flightNumber(leg.flight)}</span>
                 <span>{fmtMDY(leg.date)}</span>
                 <span
                   className="cs-x"
@@ -3827,6 +3893,19 @@ function Admin({ trip, onPublish, onBoard }) {
                   ) : null}
                   <div className="cs-time">{leg.arrive}</div>
                 </div>
+              </div>
+              <div className="cs-legedit">
+                <span
+                  className={`cs-dh-chip ${isDeadhead(leg) ? "on" : ""}`}
+                  onClick={() => toggleDeadhead(i)}
+                  role="switch"
+                  aria-checked={isDeadhead(leg)}
+                >
+                  {isDeadhead(leg) ? "✓ Deadhead" : "Mark deadhead"}
+                </span>
+                <span className="cs-manual-link" onClick={() => editLeg(i)}>
+                  edit this leg
+                </span>
               </div>
             </div>
           ))}
