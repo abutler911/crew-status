@@ -28,6 +28,25 @@ or republished; the record also keeps a short history per direction and a
 text-size control (A / A⁺ / A⁺⁺) lives in the footer alongside the theme and
 accent choices.
 
+## The fold-out route map
+
+While a leg is in the air, its route ribbon (the arced progress line on the
+in-air card) can be tapped to unfold a map: coastlines and US state lines in
+faint ink, framed around the leg's great-circle path, with the plane at the
+live progress point. It's drawn entirely from bundled data — no map service,
+no tiles:
+
+- `src/lib/landdata.js` — generated land outlines and state lines
+  (regenerate with `scripts/build-landdata.mjs`; instructions in its header).
+  Lazy-loaded on the first unfold, so it adds nothing to the initial bundle.
+- `src/lib/airports.js` — IATA code → coordinates for the airports Babe-a
+  plausibly touches. A leg between airports missing from this table simply
+  doesn't offer the map; add the coordinates there to light it up.
+- `src/lib/geo.js` — the great-circle / projection math, kept free of React
+  so it can be exercised outside the app.
+
+The open/folded choice is remembered per device.
+
 ## Push notifications
 
 The app can push a notification to subscribed devices when a leg **departs**,
