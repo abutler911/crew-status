@@ -1,6 +1,16 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useId } from "react";
 import * as store from "./lib/store.js";
 import * as push from "./lib/push.js";
+import { AIRPORTS } from "./lib/airports.js";
+import {
+  decodeRings,
+  greatCircle,
+  routeFrame,
+  projector,
+  worldCopies,
+  pathFor,
+  graticuleStep,
+} from "./lib/geo.js";
 
 // The access codes no longer live here. They are environment variables on the
 // server, and the gate checks them through /api/auth. Nothing secret ships to
@@ -26,6 +36,11 @@ const css = `
   --tone-air: #1f6f9f;
   --tone-late: #a86400;
   --tone-away: #66589e;
+  /* fold-out route map inks */
+  --map-land: rgba(27,26,24,0.08);
+  --map-coast: rgba(27,26,24,0.34);
+  --map-border: rgba(27,26,24,0.20);
+  --map-grat: rgba(27,26,24,0.07);
   min-height: 100vh;
   background: var(--ink);
   color: var(--text);
@@ -52,6 +67,10 @@ const css = `
   --tone-air: #82c5e8;
   --tone-late: #e5b055;
   --tone-away: #b4a7e2;
+  --map-land: rgba(244,241,236,0.09);
+  --map-coast: rgba(244,241,236,0.38);
+  --map-border: rgba(244,241,236,0.22);
+  --map-grat: rgba(244,241,236,0.07);
 }
 .cs-root.dark .cs-leg.active { background: rgba(239,85,100,0.12); }
 .cs-root.dark .cs-saved { color: #4cc47e; }
@@ -490,6 +509,87 @@ const css = `
   color: var(--faint);
 }
 .cs-ribbon-eta { color: var(--crimson); font-weight: 700; }
+.cs-ribbon-toggle {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs-ribbon-hint {
+  margin-top: 10px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* fold-out route map: unfolds beneath the ribbon like opening a paper map */
+.cs-map-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.5s ease;
+}
+.cs-map-fold.open { grid-template-rows: 1fr; }
+.cs-map-fold > div { overflow: hidden; min-height: 0; }
+.cs-map { margin: 14px 6px 0; }
+.cs-map-svg { display: block; width: 100%; height: auto; }
+.cs-map-water { fill: var(--surface); }
+.cs-map-land {
+  fill: var(--map-land);
+  stroke: var(--map-coast);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+.cs-map-border {
+  fill: none;
+  stroke: var(--map-border);
+  stroke-width: 0.6;
+  stroke-dasharray: 3 3;
+}
+.cs-map-grat { stroke: var(--map-grat); stroke-width: 0.6; }
+.cs-map-edge { fill: none; stroke: var(--line); stroke-width: 1; }
+.cs-map-route-rest {
+  fill: none;
+  stroke: var(--crimson);
+  stroke-opacity: 0.45;
+  stroke-width: 1.3;
+  stroke-dasharray: 0.6 4;
+  stroke-linecap: round;
+}
+.cs-map-route-flown {
+  fill: none;
+  stroke: var(--crimson);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+.cs-map-dot { fill: var(--crimson); }
+.cs-map-dot.to { fill: var(--surface); stroke: var(--crimson); stroke-width: 1.4; }
+.cs-map-plane { fill: var(--text); }
+.cs-map-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3;
+}
+.cs-map-loading {
+  padding: 18px 0 4px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--faint);
+}
 
 /* pinned in-air card, hoisted to the top */
 .cs-pinned { margin-top: 20px; }
@@ -2361,6 +2461,173 @@ function RouteArrow() {
   );
 }
 
+// Shared plane silhouette (points north, so headings get a quarter turn).
+const PLANE_D =
+  "M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z";
+
+// Land shapes and state lines load on the first unfold only (and decode
+// once), so the map costs no bundle weight or work until somebody opens it.
+let worldPromise = null;
+function loadWorld() {
+  if (!worldPromise) {
+    worldPromise = import("./lib/landdata.js").then((m) => ({
+      land: decodeRings(m.LAND),
+      states: decodeRings(m.STATE_LINES),
+    }));
+  }
+  return worldPromise;
+}
+
+const MAP_W = 320;
+const MAP_H = 200;
+
+// The fold-out route map: coastlines and state lines in faint ink, framed
+// around the leg's great-circle path, with the same flown/remaining split and
+// the plane at the live progress point. Renders nothing if either airport is
+// missing from the coordinates table.
+function RouteMap({ from, to, progress, homecoming, open }) {
+  const clipId = useId();
+  const [world, setWorld] = useState(null);
+  useEffect(() => {
+    if (!open || world) return;
+    let alive = true;
+    loadWorld()
+      .then((w) => {
+        if (alive) setWorld(w);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [open, world]);
+
+  // Everything that doesn't move while the flight is in the air.
+  const scene = useMemo(() => {
+    const a = AIRPORTS[(from || "").toUpperCase()];
+    const b = AIRPORTS[(to || "").toUpperCase()];
+    if (!a || !b) return null;
+    const route = greatCircle(a, b, 72);
+    const frame = routeFrame(route, MAP_W / MAP_H);
+    const proj = projector(frame, MAP_W, MAP_H);
+    const landD = [];
+    const borderD = [];
+    if (world) {
+      for (const shift of worldCopies(frame)) {
+        for (const ring of world.land) {
+          const d = pathFor(ring, frame, proj, shift, true);
+          if (d) landD.push(d);
+        }
+        for (const line of world.states) {
+          const d = pathFor(line, frame, proj, shift, false);
+          if (d) borderD.push(d);
+        }
+      }
+    }
+    const step = graticuleStep(frame);
+    const gratX = [];
+    const gratY = [];
+    for (
+      let lon = Math.ceil(frame.lon0 / step) * step;
+      lon <= frame.lon1;
+      lon += step
+    ) {
+      gratX.push(proj([lon, frame.lat0])[0]);
+    }
+    for (
+      let lat = Math.ceil(frame.lat0 / step) * step;
+      lat <= frame.lat1;
+      lat += step
+    ) {
+      gratY.push(proj([frame.lon0, lat])[1]);
+    }
+    return { route, proj, landD, borderD, gratX, gratY, d: pathFor(route, frame, proj) };
+  }, [from, to, world]);
+
+  if (!scene) return null;
+  if (!world) {
+    return (
+      <div className="cs-map">
+        <div className="cs-map-loading">unfolding the map…</div>
+      </div>
+    );
+  }
+
+  const { route, proj } = scene;
+  const t = Math.min(0.97, Math.max(0.03, progress / 100));
+  const i = Math.min(route.length - 2, Math.floor(t * (route.length - 1)));
+  const f = t * (route.length - 1) - i;
+  const p1 = proj(route[i]);
+  const p2 = proj(route[i + 1]);
+  const px = p1[0] + (p2[0] - p1[0]) * f;
+  const py = p1[1] + (p2[1] - p1[1]) * f;
+  const heading = (Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) * 180) / Math.PI;
+
+  const [ax, ay] = proj(route[0]);
+  const [bx, by] = proj(route[route.length - 1]);
+  const label = (x, y, text) => (
+    <text
+      className="cs-map-code"
+      x={Math.min(MAP_W - 18, Math.max(18, x))}
+      y={y + 15 > MAP_H - 6 ? y - 9 : y + 15}
+      textAnchor="middle"
+    >
+      {text}
+    </text>
+  );
+
+  return (
+    <div className="cs-map">
+      <svg className="cs-map-svg" viewBox={`0 0 ${MAP_W} ${MAP_H}`} aria-hidden="true">
+        <defs>
+          <clipPath id={clipId}>
+            <rect width={MAP_W} height={MAP_H} rx="10" />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${clipId})`}>
+          <rect width={MAP_W} height={MAP_H} className="cs-map-water" />
+          {scene.landD.map((d, k) => (
+            <path key={`l${k}`} className="cs-map-land" d={d} />
+          ))}
+          {scene.gratX.map((x, k) => (
+            <line key={`gx${k}`} className="cs-map-grat" x1={x} y1="0" x2={x} y2={MAP_H} />
+          ))}
+          {scene.gratY.map((y, k) => (
+            <line key={`gy${k}`} className="cs-map-grat" x1="0" y1={y} x2={MAP_W} y2={y} />
+          ))}
+          {scene.borderD.map((d, k) => (
+            <path key={`b${k}`} className="cs-map-border" d={d} />
+          ))}
+          <path className="cs-map-route-rest" d={scene.d} />
+          <path
+            className="cs-map-route-flown"
+            d={scene.d}
+            pathLength="100"
+            style={{ strokeDasharray: `${Math.max(1, progress)} 100` }}
+          />
+          <circle className="cs-map-dot" cx={ax} cy={ay} r="2.6" />
+          {homecoming ? (
+            <path
+              className="cs-ribbon-heart"
+              transform={`translate(${bx} ${by}) scale(1.5)`}
+              d="M0 2.4 C -3.2 0 -2 -3 0 -1.3 C 2 -3 3.2 0 0 2.4 Z"
+            />
+          ) : (
+            <circle className="cs-map-dot to" cx={bx} cy={by} r="2.6" />
+          )}
+          {label(ax, ay, from)}
+          {label(bx, by, to)}
+          <g
+            transform={`translate(${px} ${py}) rotate(${heading + 90}) scale(0.8) translate(-12 -12)`}
+          >
+            <path className="cs-map-plane" d={PLANE_D} />
+          </g>
+        </g>
+        <rect width={MAP_W} height={MAP_H} rx="10" className="cs-map-edge" />
+      </svg>
+    </div>
+  );
+}
+
 // The in-air route ribbon: the leg drawn as a gently arced flight path with a
 // little plane at the live progress point. Solid ink behind the plane is the
 // distance already flown; the dotted line ahead is what's left. On the final
@@ -2399,14 +2666,10 @@ function RouteRibbon({ from, to, progress, etaText, homecoming }) {
         ) : (
           <circle className="cs-ribbon-dot to" cx={B.x} cy={B.y} r="1.8" />
         )}
-        {/* The icon points north, so the heading gets a quarter turn. */}
         <g
           transform={`translate(${px} ${py}) rotate(${heading + 90}) scale(0.55) translate(-12 -12)`}
         >
-          <path
-            className="cs-ribbon-plane"
-            d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"
-          />
+          <path className="cs-ribbon-plane" d={PLANE_D} />
         </g>
       </svg>
       <div className="cs-ribbon-meta">
@@ -2464,7 +2727,17 @@ function ThemeToggle({ theme, onToggle }) {
 // layout keeps the airport codes on their own row, the times in an aligned
 // two-column row, and weather + live status on their own full-width rows so
 // nothing gets squeezed or truncated.
-function LegCard({ leg, now, statuses, weather, pinned, homecoming, style }) {
+function LegCard({
+  leg,
+  now,
+  statuses,
+  weather,
+  pinned,
+  homecoming,
+  mapOpen,
+  onToggleMap,
+  style,
+}) {
   const { dep, arr, nextDay } = legDates(leg);
   const st = statuses[legStatusKey(leg)];
   // Live data wins: if it actually landed, it's not in the air anymore even if
@@ -2494,6 +2767,15 @@ function LegCard({ leg, now, statuses, weather, pinned, homecoming, style }) {
         : ((now - dep) / (arr - dep)) * 100;
     progress = Math.max(3, Math.min(100, Math.round(pctRaw)));
   }
+
+  // The ribbon unfolds into a map when both airports have known coordinates.
+  // Open/closed lives in the Viewer so the pinned card and the same leg's
+  // card in the day list fold together.
+  const canMap =
+    active &&
+    !!onToggleMap &&
+    !!AIRPORTS[(leg.from || "").toUpperCase()] &&
+    !!AIRPORTS[(leg.to || "").toUpperCase()];
 
   return (
     <div
@@ -2563,13 +2845,46 @@ function LegCard({ leg, now, statuses, weather, pinned, homecoming, style }) {
       </div>
 
       {active ? (
-        <RouteRibbon
-          from={leg.from}
-          to={leg.to}
-          progress={progress}
-          etaText={etaText}
-          homecoming={homecoming}
-        />
+        canMap ? (
+          <>
+            <button
+              type="button"
+              className="cs-ribbon-toggle"
+              onClick={onToggleMap}
+              aria-expanded={!!mapOpen}
+            >
+              <RouteRibbon
+                from={leg.from}
+                to={leg.to}
+                progress={progress}
+                etaText={etaText}
+                homecoming={homecoming}
+              />
+              <div className="cs-ribbon-hint">
+                {mapOpen ? "fold the map away ▴" : "unfold the map ▾"}
+              </div>
+            </button>
+            <div className={`cs-map-fold ${mapOpen ? "open" : ""}`}>
+              <div>
+                <RouteMap
+                  from={leg.from}
+                  to={leg.to}
+                  progress={progress}
+                  homecoming={homecoming}
+                  open={mapOpen}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <RouteRibbon
+            from={leg.from}
+            to={leg.to}
+            progress={progress}
+            etaText={etaText}
+            homecoming={homecoming}
+          />
+        )
       ) : null}
 
       {wx ? (
@@ -3028,6 +3343,27 @@ function Viewer({ me, trip, now, refreshedAt, onFlightDeck, onLock }) {
     .filter((h) => h && h.text && h.text !== noteToMe)
     .slice(0, 5);
 
+  // Whether the in-air ribbon's fold-out map is open. One piece of state for
+  // the whole board (the flying leg appears both pinned and in the day list),
+  // remembered per device.
+  const [mapOpen, setMapOpen] = useState(() => {
+    try {
+      return localStorage.getItem("cs-map-open") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleMap = () => {
+    setMapOpen((v) => {
+      try {
+        localStorage.setItem("cs-map-open", v ? "" : "1");
+      } catch {
+        /* per-device nicety only */
+      }
+      return !v;
+    });
+  };
+
   // "How to read this" opens itself the very first visit, then stays put.
   const [helpOpen] = useState(() => {
     try {
@@ -3141,6 +3477,8 @@ function Viewer({ me, trip, now, refreshedAt, onFlightDeck, onLock }) {
             weather={weather}
             pinned
             homecoming={isHomecoming(flyingLeg)}
+            mapOpen={mapOpen}
+            onToggleMap={toggleMap}
           />
         </div>
       )}
@@ -3227,6 +3565,8 @@ function Viewer({ me, trip, now, refreshedAt, onFlightDeck, onLock }) {
                       statuses={statuses}
                       weather={weather}
                       homecoming={isHomecoming(leg)}
+                      mapOpen={mapOpen}
+                      onToggleMap={toggleMap}
                       style={{ animationDelay: `${i * 0.06}s` }}
                     />
                     {lay && (
