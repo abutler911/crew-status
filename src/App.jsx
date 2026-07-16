@@ -455,41 +455,41 @@ const css = `
 .cs-wx2 .cs-wx-temp { font-weight: 600; color: var(--text); }
 .cs-wx2 .cs-wx-where { color: var(--faint); }
 
-/* in-air flight progress */
-.cs-prog { margin-top: 18px; }
-.cs-prog-track {
-  position: relative;
-  height: 3px;
-  border-radius: 999px;
-  background: rgba(190,38,57,0.18);
-  margin: 0 6px 10px;
+/* in-air route ribbon: the leg drawn as an arced flight path, solid ink
+   behind the plane for distance flown, a dotted line ahead for what's left */
+.cs-ribbon { margin: 18px 6px 0; }
+.cs-ribbon svg { display: block; width: 100%; height: auto; overflow: visible; }
+.cs-ribbon-rest {
+  fill: none;
+  stroke: var(--crimson);
+  stroke-opacity: 0.4;
+  stroke-width: 1.1;
+  stroke-dasharray: 0.4 3.2;
+  stroke-linecap: round;
 }
-.cs-prog-fill {
-  position: relative;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--crimson);
-  transition: width 0.6s ease;
+.cs-ribbon-flown {
+  fill: none;
+  stroke: var(--crimson);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
 }
-.cs-prog-plane {
-  position: absolute;
-  right: -6px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 15px;
-  line-height: 1;
-}
-.cs-prog-meta {
+.cs-ribbon-dot { fill: var(--crimson); }
+.cs-ribbon-dot.to { fill: var(--surface); stroke: var(--crimson); stroke-width: 1.2; }
+.cs-ribbon-heart { fill: var(--crimson); }
+.cs-ribbon-plane { fill: var(--text); }
+.cs-ribbon-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  margin-top: 8px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   letter-spacing: 0.06em;
   color: var(--faint);
 }
-.cs-prog-eta { color: var(--crimson); font-weight: 700; }
+.cs-ribbon-eta { color: var(--crimson); font-weight: 700; }
 
 /* pinned in-air card, hoisted to the top */
 .cs-pinned { margin-top: 20px; }
@@ -2361,6 +2361,63 @@ function RouteArrow() {
   );
 }
 
+// The in-air route ribbon: the leg drawn as a gently arced flight path with a
+// little plane at the live progress point. Solid ink behind the plane is the
+// distance already flown; the dotted line ahead is what's left. On the final
+// leg home the destination marker becomes a heart.
+function RouteRibbon({ from, to, progress, etaText, homecoming }) {
+  const A = { x: 8, y: 30 }; // origin
+  const B = { x: 112, y: 30 }; // destination
+  const C = { x: 60, y: 4 }; // arc control point
+  // Keep the plane just off the endpoint markers.
+  const t = Math.min(0.97, Math.max(0.03, progress / 100));
+  const q = (a, c, b) =>
+    (1 - t) * (1 - t) * a + 2 * (1 - t) * t * c + t * t * b;
+  const px = q(A.x, C.x, B.x);
+  const py = q(A.y, C.y, B.y);
+  const dx = (1 - t) * (C.x - A.x) + t * (B.x - C.x);
+  const dy = (1 - t) * (C.y - A.y) + t * (B.y - C.y);
+  const heading = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const d = `M ${A.x} ${A.y} Q ${C.x} ${C.y} ${B.x} ${B.y}`;
+  return (
+    <div className="cs-ribbon">
+      <svg viewBox="0 0 120 34" aria-hidden="true">
+        <path className="cs-ribbon-rest" d={d} />
+        <path
+          className="cs-ribbon-flown"
+          d={d}
+          pathLength="100"
+          style={{ strokeDasharray: `${Math.max(1, progress)} 100` }}
+        />
+        <circle className="cs-ribbon-dot" cx={A.x} cy={A.y} r="1.8" />
+        {homecoming ? (
+          <path
+            className="cs-ribbon-heart"
+            transform={`translate(${B.x} ${B.y}) scale(1.4)`}
+            d="M0 2.4 C -3.2 0 -2 -3 0 -1.3 C 2 -3 3.2 0 0 2.4 Z"
+          />
+        ) : (
+          <circle className="cs-ribbon-dot to" cx={B.x} cy={B.y} r="1.8" />
+        )}
+        {/* The icon points north, so the heading gets a quarter turn. */}
+        <g
+          transform={`translate(${px} ${py}) rotate(${heading + 90}) scale(0.55) translate(-12 -12)`}
+        >
+          <path
+            className="cs-ribbon-plane"
+            d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"
+          />
+        </g>
+      </svg>
+      <div className="cs-ribbon-meta">
+        <span>{from}</span>
+        <span className="cs-ribbon-eta">{etaText}</span>
+        <span>{to}</span>
+      </div>
+    </div>
+  );
+}
+
 // Sun / moon toggle, fixed to the top-right corner on every screen.
 function ThemeToggle({ theme, onToggle }) {
   const dark = theme === "dark";
@@ -2407,7 +2464,7 @@ function ThemeToggle({ theme, onToggle }) {
 // layout keeps the airport codes on their own row, the times in an aligned
 // two-column row, and weather + live status on their own full-width rows so
 // nothing gets squeezed or truncated.
-function LegCard({ leg, now, statuses, weather, pinned, style }) {
+function LegCard({ leg, now, statuses, weather, pinned, homecoming, style }) {
   const { dep, arr, nextDay } = legDates(leg);
   const st = statuses[legStatusKey(leg)];
   // Live data wins: if it actually landed, it's not in the air anymore even if
@@ -2506,18 +2563,13 @@ function LegCard({ leg, now, statuses, weather, pinned, style }) {
       </div>
 
       {active ? (
-        <div className="cs-prog">
-          <div className="cs-prog-track">
-            <div className="cs-prog-fill" style={{ width: `${progress}%` }}>
-              <span className="cs-prog-plane">✈</span>
-            </div>
-          </div>
-          <div className="cs-prog-meta">
-            <span>{leg.from}</span>
-            <span className="cs-prog-eta">{etaText}</span>
-            <span>{leg.to}</span>
-          </div>
-        </div>
+        <RouteRibbon
+          from={leg.from}
+          to={leg.to}
+          progress={progress}
+          etaText={etaText}
+          homecoming={homecoming}
+        />
       ) : null}
 
       {wx ? (
@@ -3059,6 +3111,11 @@ function Viewer({ me, trip, now, refreshedAt, onFlightDeck, onLock }) {
         })
       : null;
 
+  // The final leg into home gets a heart at the destination end of its ribbon.
+  const isHomecoming = (leg) =>
+    leg === s.sorted[s.sorted.length - 1] &&
+    (leg.to || "").toUpperCase() === HOME_AIRPORT;
+
   return (
     <div>
       <Greeting now={now} name={myName} />
@@ -3083,6 +3140,7 @@ function Viewer({ me, trip, now, refreshedAt, onFlightDeck, onLock }) {
             statuses={statuses}
             weather={weather}
             pinned
+            homecoming={isHomecoming(flyingLeg)}
           />
         </div>
       )}
@@ -3168,6 +3226,7 @@ function Viewer({ me, trip, now, refreshedAt, onFlightDeck, onLock }) {
                       now={now}
                       statuses={statuses}
                       weather={weather}
+                      homecoming={isHomecoming(leg)}
                       style={{ animationDelay: `${i * 0.06}s` }}
                     />
                     {lay && (
