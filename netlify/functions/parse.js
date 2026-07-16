@@ -47,7 +47,11 @@ Rules:
 - from and to are 3-letter IATA airport codes, uppercase.
 - Fill fromCity and toCity with the city names for those airports.
 - If only day/month is given, infer the year from today's date.
-- Include deadhead legs, but prefix the flight with "DH ".
+- Include deadhead legs. Prefix a flight with "DH " ONLY when the sheet
+  explicitly marks that leg as a deadhead: a DH / DHD code on the leg's own
+  line, the word "deadhead", or a positioning/repositioning note. Crew seat
+  codes, equipment codes, and anything ambiguous are NOT deadhead markers —
+  when in doubt, do not add the prefix.
 - Skip hotel, van, and ground lines.
 - If you find no flight legs, return [].
 
