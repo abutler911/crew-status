@@ -50,27 +50,31 @@ export default async (req) => {
   const store = getStore("flightstatus");
   const statuses = {};
 
-  for (const leg of legs) {
-    const ident = toIdent(leg.flight);
-    if (!ident || !leg.date) continue;
-    const legKey = `${leg.flight}|${leg.date}`;
-    const cacheKey = `${ident}-${leg.date}-${(leg.from || "").toUpperCase()}`;
+  // Legs are looked up in parallel: each one costs a blob read and possibly an
+  // AeroAPI call, and doing them serially made a cache-miss trip take seconds.
+  await Promise.all(
+    legs.map(async (leg) => {
+      const ident = toIdent(leg.flight);
+      if (!ident || !leg.date) return;
+      const legKey = `${leg.flight}|${leg.date}`;
+      const cacheKey = `${ident}-${leg.date}-${(leg.from || "").toUpperCase()}`;
 
-    let cached = null;
-    try {
-      cached = await store.get(cacheKey, { type: "json" });
-    } catch {}
-    if (cached && Date.now() - cached.at < TTL_MS) {
-      if (cached.data) statuses[legKey] = cached.data;
-      continue;
-    }
+      let cached = null;
+      try {
+        cached = await store.get(cacheKey, { type: "json" });
+      } catch {}
+      if (cached && Date.now() - cached.at < TTL_MS) {
+        if (cached.data) statuses[legKey] = cached.data;
+        return;
+      }
 
-    const data = await fetchStatus(key, ident, leg);
-    try {
-      await store.setJSON(cacheKey, { at: Date.now(), data });
-    } catch {}
-    if (data) statuses[legKey] = data;
-  }
+      const data = await fetchStatus(key, ident, leg);
+      try {
+        await store.setJSON(cacheKey, { at: Date.now(), data });
+      } catch {}
+      if (data) statuses[legKey] = data;
+    }),
+  );
 
   return Response.json({ statuses });
 };

@@ -16,3 +16,11 @@
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
+# Vite content-hashes everything under /assets, so browsers can keep those
+# files forever instead of revalidating on every open. index.html keeps
+# Netlify's default must-revalidate, which is what picks up new deploys.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

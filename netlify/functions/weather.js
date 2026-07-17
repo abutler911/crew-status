@@ -185,32 +185,36 @@ export default async (req) => {
   const store = getStore("weather");
   const weather = {};
 
-  for (const place of places) {
-    const code = (place.code || "").toUpperCase();
-    if (!code) continue;
+  // Places resolve in parallel — each is a blob read plus (on a cache miss)
+  // one or two Open-Meteo calls, so serial lookups added up fast.
+  await Promise.all(
+    places.map(async (place) => {
+      const code = (place.code || "").toUpperCase();
+      if (!code) return;
 
-    let cached = null;
-    try {
-      cached = await store.get(`wx-${code}`, { type: "json" });
-    } catch {}
-    if (cached) {
-      const ttl = cached.data ? WX_TTL_MS : WX_NEG_TTL_MS;
-      if (Date.now() - cached.at < ttl) {
-        if (cached.data) weather[code] = cached.data;
-        continue;
+      let cached = null;
+      try {
+        cached = await store.get(`wx-${code}`, { type: "json" });
+      } catch {}
+      if (cached) {
+        const ttl = cached.data ? WX_TTL_MS : WX_NEG_TTL_MS;
+        if (Date.now() - cached.at < ttl) {
+          if (cached.data) weather[code] = cached.data;
+          return;
+        }
       }
-    }
 
-    const known = AIRPORT_COORDS[code];
-    const coords = known
-      ? { lat: known[0], lon: known[1] }
-      : await geocode(store, code, place.city);
-    const data = coords ? await forecast(coords) : null;
-    try {
-      await store.setJSON(`wx-${code}`, { at: Date.now(), data });
-    } catch {}
-    if (data) weather[code] = data;
-  }
+      const known = AIRPORT_COORDS[code];
+      const coords = known
+        ? { lat: known[0], lon: known[1] }
+        : await geocode(store, code, place.city);
+      const data = coords ? await forecast(coords) : null;
+      try {
+        await store.setJSON(`wx-${code}`, { at: Date.now(), data });
+      } catch {}
+      if (data) weather[code] = data;
+    }),
+  );
 
   return Response.json({ weather });
 };
