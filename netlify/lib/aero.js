@@ -83,8 +83,10 @@ export function pickFlight(flights, leg) {
   }
 
   const pool = sameLocalDate.length > 0 ? sameLocalDate : unknownDate;
+  const active = pool.filter((c) => !c.f.cancelled);
+  const prefer = active.length > 0 ? active : pool;
   let best = null;
-  for (const c of pool) {
+  for (const c of prefer) {
     if (!best || c.score < best.score) best = c;
   }
   if (!best) return null;

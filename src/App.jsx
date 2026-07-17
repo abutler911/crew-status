@@ -1601,7 +1601,7 @@ function describeLiveStatus(st, leg) {
   const fromTz = AIRPORT_TZ[leg.from];
   const gateIn = st.gateDestination ? ` · Gate ${st.gateDestination}` : "";
 
-  if (st.cancelled) return { tone: "bad", text: "Canceled" };
+  if (st.cancelled && !st.actualOut) return { tone: "bad", text: "Canceled" };
   if (st.diverted) return { tone: "bad", text: "Diverted" };
 
   // Landed.
